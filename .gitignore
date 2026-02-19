@@ -1,0 +1,46 @@
+# Python-generated files
+__pycache__/
+*.py[cod]
+*$py.class
+build/
+dist/
+wheels/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Distribution / packaging
+installer_output/
+
+# PyInstaller
+*.spec.bak
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Settings (contains passwords)
+settings.toml
+
+# Test databases and pytest
+*.db
+.pytest_cache/
+.pytest_tmp/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temp folder (development files not for commit)
+temp/
+
+# Keep config templates but not actual configs with secrets
+*.json
+!*_config_template.json

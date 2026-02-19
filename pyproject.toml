@@ -1,0 +1,28 @@
+[project]
+name = "bluestreak-box-uploader"
+version = "0.1.0"
+description = "Upload Bluestreak certifications to Box.com"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "box-sdk-gen>=1.0.0",
+    "pyodbc>=5.0.0",
+    "pyside6>=6.6.0",
+    "tomli-w>=1.2.0",
+]
+
+[dependency-groups]
+dev = [
+    "pyinstaller>=6.0.0",
+    "pytest>=8.0.0",
+    "pytest-qt>=4.4.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["database*", "box_service*", "settings*", "gui*"]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::UserWarning",
+]
