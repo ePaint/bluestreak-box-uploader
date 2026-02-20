@@ -1,4 +1,4 @@
-"""Settings dialog with three tabs: Database, Box.com, Paths."""
+"""Settings dialog with modern styling and three tabs: Database, Box.com, Paths."""
 
 from pathlib import Path
 
@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 
 from settings import load_settings, save_settings
 from database.connection import DatabaseConfig, check_connection
+from gui.theme import COLORS, SPACING, RADIUS, get_icon
 
 
 class SettingsDialog(QDialog):
@@ -29,12 +30,15 @@ class SettingsDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Settings")
-        self.setMinimumWidth(500)
+        self.setMinimumWidth(550)
+        self.setMinimumHeight(400)
         self._setup_ui()
         self._load_settings()
 
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(SPACING["lg"], SPACING["lg"], SPACING["lg"], SPACING["lg"])
+        layout.setSpacing(SPACING["md"])
 
         # Tab widget
         self._tabs = QTabWidget()
@@ -43,28 +47,51 @@ class SettingsDialog(QDialog):
         # Database tab
         self._db_tab = QWidget()
         self._setup_db_tab()
-        self._tabs.addTab(self._db_tab, "Database")
+        self._tabs.addTab(self._db_tab, get_icon("database"), "Database")
 
         # Box tab
         self._box_tab = QWidget()
         self._setup_box_tab()
-        self._tabs.addTab(self._box_tab, "Box.com")
+        self._tabs.addTab(self._box_tab, get_icon("box"), "Box.com")
 
         # Paths tab
         self._paths_tab = QWidget()
         self._setup_paths_tab()
-        self._tabs.addTab(self._paths_tab, "Paths")
+        self._tabs.addTab(self._paths_tab, get_icon("folder"), "Paths")
 
         # Button box
-        button_box = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
-        )
-        button_box.accepted.connect(self._save_and_close)
-        button_box.rejected.connect(self.reject)
+        button_box = QDialogButtonBox()
+
+        self._save_btn = QPushButton("Save")
+        self._save_btn.setProperty("primary", True)
+        self._save_btn.clicked.connect(self._save_and_close)
+        button_box.addButton(self._save_btn, QDialogButtonBox.ButtonRole.AcceptRole)
+
+        self._cancel_btn = QPushButton("Cancel")
+        self._cancel_btn.clicked.connect(self.reject)
+        button_box.addButton(self._cancel_btn, QDialogButtonBox.ButtonRole.RejectRole)
+
         layout.addWidget(button_box)
+
+    def _create_help_label(self, text: str) -> QLabel:
+        """Create a styled help text label."""
+        label = QLabel(text)
+        label.setWordWrap(True)
+        label.setStyleSheet(f"""
+            QLabel {{
+                color: {COLORS['text_secondary']};
+                font-size: 9pt;
+                padding: 8px;
+                background-color: {COLORS['background']};
+                border-radius: {RADIUS['sm']}px;
+            }}
+        """)
+        return label
 
     def _setup_db_tab(self) -> None:
         layout = QFormLayout(self._db_tab)
+        layout.setSpacing(SPACING["sm"])
+        layout.setContentsMargins(SPACING["md"], SPACING["md"], SPACING["md"], SPACING["md"])
 
         # Driver selection
         self._db_driver = QComboBox()
@@ -95,66 +122,74 @@ class SettingsDialog(QDialog):
 
         # SQLite path (for testing)
         sqlite_layout = QHBoxLayout()
+        sqlite_layout.setSpacing(SPACING["sm"])
         self._db_sqlite_path = QLineEdit()
         self._db_sqlite_path.setPlaceholderText("Path to SQLite database")
         sqlite_layout.addWidget(self._db_sqlite_path)
         self._db_sqlite_browse = QPushButton("Browse...")
+        self._db_sqlite_browse.setMaximumHeight(36)
         self._db_sqlite_browse.clicked.connect(self._browse_sqlite)
         sqlite_layout.addWidget(self._db_sqlite_browse)
         layout.addRow("SQLite Path:", sqlite_layout)
 
         # Test button
         self._db_test_btn = QPushButton("Test Connection")
+        self._db_test_btn.setIcon(get_icon("plug"))
         self._db_test_btn.clicked.connect(self._test_db_connection)
         layout.addRow("", self._db_test_btn)
 
     def _setup_box_tab(self) -> None:
         layout = QFormLayout(self._box_tab)
+        layout.setSpacing(SPACING["sm"])
+        layout.setContentsMargins(SPACING["md"], SPACING["md"], SPACING["md"], SPACING["md"])
 
         # JWT config path
         jwt_layout = QHBoxLayout()
+        jwt_layout.setSpacing(SPACING["sm"])
         self._box_jwt_path = QLineEdit()
         self._box_jwt_path.setPlaceholderText("Path to Box JWT config JSON file")
         jwt_layout.addWidget(self._box_jwt_path)
         self._box_jwt_browse = QPushButton("Browse...")
+        self._box_jwt_browse.setMaximumHeight(36)
         self._box_jwt_browse.clicked.connect(self._browse_jwt)
         jwt_layout.addWidget(self._box_jwt_browse)
         layout.addRow("JWT Config:", jwt_layout)
 
         # Help text
-        help_label = QLabel(
+        help_label = self._create_help_label(
             "The JWT config file can be downloaded from your Box Developer Console.\n"
             "Go to: Developer Console > Your App > Configuration > Generate a Public/Private Keypair"
         )
-        help_label.setWordWrap(True)
-        help_label.setStyleSheet("color: #888; font-size: 9pt;")
         layout.addRow("", help_label)
 
         # Test button
         self._box_test_btn = QPushButton("Test Connection")
+        self._box_test_btn.setIcon(get_icon("plug"))
         self._box_test_btn.clicked.connect(self._test_box_connection)
         layout.addRow("", self._box_test_btn)
 
     def _setup_paths_tab(self) -> None:
         layout = QFormLayout(self._paths_tab)
+        layout.setSpacing(SPACING["sm"])
+        layout.setContentsMargins(SPACING["md"], SPACING["md"], SPACING["md"], SPACING["md"])
 
         # Media base path
         media_layout = QHBoxLayout()
+        media_layout.setSpacing(SPACING["sm"])
         self._media_base_path = QLineEdit()
         self._media_base_path.setPlaceholderText(r"e.g., D:\inetpub\wwwroot\Bluestreak\Media")
         media_layout.addWidget(self._media_base_path)
         self._media_browse = QPushButton("Browse...")
+        self._media_browse.setMaximumHeight(36)
         self._media_browse.clicked.connect(self._browse_media)
         media_layout.addWidget(self._media_browse)
         layout.addRow("Media Base Path:", media_layout)
 
         # Help text
-        help_label = QLabel(
+        help_label = self._create_help_label(
             "This is the base directory where Bluestreak stores media files.\n"
             "File paths from the database (e.g., '202602/file.pdf') are relative to this path."
         )
-        help_label.setWordWrap(True)
-        help_label.setStyleSheet("color: #888; font-size: 9pt;")
         layout.addRow("", help_label)
 
     def _load_settings(self) -> None:

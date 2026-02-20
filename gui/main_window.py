@@ -1,4 +1,4 @@
-"""Main application window."""
+"""Main application window with modern card-based layout."""
 
 from pathlib import Path
 
@@ -13,15 +13,16 @@ from PySide6.QtWidgets import (
     QPushButton,
     QCheckBox,
     QMessageBox,
-    QGroupBox,
 )
 
 from database.models import Certification, Customer
 from settings import load_settings, save_settings
 from settings.config import get_database_config
 from gui.widgets import CertificationTable, LogViewer, UploadProgressWidget
+from gui.widgets.card import Card
 from gui.settings_dialog import SettingsDialog
 from gui.workers import QueryWorker, UploadWorker
+from gui.theme import COLORS, SPACING, get_icon
 
 
 class MainWindow(QMainWindow):
@@ -30,7 +31,8 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Bluestreak Box Uploader")
-        self.setMinimumSize(800, 700)
+        self.setMinimumSize(850, 750)
+        self.resize(900, 900)
 
         self._certifications: list[Certification] = []
         self._customer: Customer | None = None
@@ -63,82 +65,80 @@ class MainWindow(QMainWindow):
         central = QWidget()
         self.setCentralWidget(central)
         layout = QVBoxLayout(central)
+        layout.setContentsMargins(SPACING["lg"], SPACING["lg"], SPACING["lg"], SPACING["lg"])
+        layout.setSpacing(SPACING["md"])
 
-        # Order Lookup group
-        lookup_group = QGroupBox("Order Lookup")
-        lookup_layout = QHBoxLayout(lookup_group)
-
-        lookup_layout.addWidget(QLabel("Order ID:"))
+        # Order Lookup Card
+        lookup_card = Card(title="ORDER LOOKUP", icon=get_icon("search"))
+        lookup_layout = QHBoxLayout()
+        lookup_layout.setSpacing(SPACING["sm"])
 
         self._order_input = QLineEdit()
         self._order_input.setPlaceholderText("Enter order ID (e.g., 444337)")
         self._order_input.returnPressed.connect(self._search_order)
-        lookup_layout.addWidget(self._order_input)
+        lookup_layout.addWidget(self._order_input, stretch=1)
 
         self._search_btn = QPushButton("Search")
+        self._search_btn.setProperty("primary", True)
         self._search_btn.clicked.connect(self._search_order)
         lookup_layout.addWidget(self._search_btn)
 
-        layout.addWidget(lookup_group)
+        lookup_card.add_layout(lookup_layout)
+        layout.addWidget(lookup_card)
 
-        # Certifications group
-        certs_group = QGroupBox("Certifications Found")
-        certs_layout = QVBoxLayout(certs_group)
+        # Certifications Card
+        self._certs_card = Card(title="CERTIFICATIONS", icon=get_icon("certificate"))
 
         self._cert_table = CertificationTable()
+        self._cert_table.setMinimumHeight(200)
         self._cert_table.selection_changed.connect(self._update_ui_state)
-        certs_layout.addWidget(self._cert_table)
 
-        # Auto-upload checkbox
-        options_layout = QHBoxLayout()
+        # Auto-upload checkbox (added to cert_table toolbar)
         self._auto_upload_checkbox = QCheckBox("Auto-upload when single certification found")
         settings = load_settings()
         self._auto_upload_checkbox.setChecked(settings.get("auto_upload_single", True))
         self._auto_upload_checkbox.toggled.connect(self._on_auto_upload_changed)
-        options_layout.addWidget(self._auto_upload_checkbox)
-        options_layout.addStretch()
-        certs_layout.addLayout(options_layout)
+        self._cert_table.add_toolbar_widget(self._auto_upload_checkbox)
+
+        self._certs_card.add_widget(self._cert_table)
 
         # Warning label (hidden by default)
         self._warning_label = QLabel()
-        self._warning_label.setStyleSheet("""
-            QLabel {
-                color: #ffd43b;
-                background-color: #3d3d00;
-                padding: 8px;
-                border-radius: 4px;
-            }
+        self._warning_label.setStyleSheet(f"""
+            QLabel {{
+                color: {COLORS['warning']};
+                background-color: rgba(251, 191, 36, 0.15);
+                padding: 12px;
+                border-radius: 8px;
+                border: 1px solid rgba(251, 191, 36, 0.3);
+            }}
         """)
         self._warning_label.setVisible(False)
-        certs_layout.addWidget(self._warning_label)
+        self._certs_card.add_widget(self._warning_label)
 
-        layout.addWidget(certs_group)
+        layout.addWidget(self._certs_card, stretch=1)
 
-        # Upload Progress group
-        progress_group = QGroupBox("Upload Progress")
-        progress_layout = QVBoxLayout(progress_group)
-
+        # Upload Progress Card
+        progress_card = Card(title="UPLOAD PROGRESS", icon=get_icon("upload"))
         self._progress_widget = UploadProgressWidget()
-        progress_layout.addWidget(self._progress_widget)
+        progress_card.add_widget(self._progress_widget)
+        layout.addWidget(progress_card)
 
-        layout.addWidget(progress_group)
-
-        # Log group
-        log_group = QGroupBox("Log")
-        log_layout = QVBoxLayout(log_group)
-
+        # Log Card
+        log_card = Card(title="LOG", icon=get_icon("log"))
         self._log = LogViewer()
-        self._log.setMinimumHeight(150)
-        log_layout.addWidget(self._log)
-
-        layout.addWidget(log_group)
+        self._log.setMinimumHeight(100)
+        log_card.add_widget(self._log)
+        layout.addWidget(log_card)
 
         # Button row
         button_layout = QHBoxLayout()
+        button_layout.setSpacing(SPACING["sm"])
         button_layout.addStretch()
 
         self._upload_btn = QPushButton("Upload Selected")
-        self._upload_btn.setMinimumWidth(120)
+        self._upload_btn.setMinimumWidth(140)
+        self._upload_btn.setProperty("primary", True)
         self._upload_btn.clicked.connect(self._start_upload)
         button_layout.addWidget(self._upload_btn)
 
@@ -171,10 +171,18 @@ class MainWindow(QMainWindow):
         self._search_btn.setEnabled(not is_processing)
         self._order_input.setEnabled(not is_processing)
 
+        # Update badge with count
+        cert_count = len(self._certifications)
+        if cert_count > 0:
+            self._certs_card.set_badge(f"{cert_count} found")
+            self._certs_card.set_badge_color(COLORS["accent"])
+        else:
+            self._certs_card.set_badge("")
+
         # Update warning visibility
         if self._customer is not None and self._customer.cst_integration_id is None:
             self._warning_label.setText(
-                f"Warning: Customer '{self._customer.cst_name}' is not mapped to a Box folder. "
+                f"\u26A0  Customer '{self._customer.cst_name}' is not mapped to a Box folder. "
                 "Set cstIntegrationID in the database to enable uploads."
             )
             self._warning_label.setVisible(True)

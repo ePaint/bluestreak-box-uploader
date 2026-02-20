@@ -1,4 +1,4 @@
-"""Application entry point with dark theme support."""
+"""Application entry point with modern dark theme."""
 
 import sys
 from pathlib import Path
@@ -8,6 +8,7 @@ from PySide6.QtGui import QPalette, QColor, QIcon
 from PySide6.QtWidgets import QApplication
 
 from gui.main_window import MainWindow
+from gui.theme import COLORS, get_stylesheet
 
 
 def get_icon_path() -> Path | None:
@@ -30,30 +31,46 @@ def get_icon_path() -> Path | None:
 
 
 def apply_dark_theme(app: QApplication) -> None:
-    """Apply a dark color palette to the application."""
+    """Apply the modern dark theme to the application."""
     app.setStyle("Fusion")
 
+    # Set color palette
     palette = QPalette()
 
-    palette.setColor(QPalette.ColorRole.Window, QColor(53, 53, 53))
-    palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.white)
-    palette.setColor(QPalette.ColorRole.Base, QColor(25, 25, 25))
-    palette.setColor(QPalette.ColorRole.AlternateBase, QColor(53, 53, 53))
-    palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(53, 53, 53))
-    palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.white)
-    palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.white)
-    palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
-    palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.white)
-    palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
-    palette.setColor(QPalette.ColorRole.Link, QColor(42, 130, 218))
-    palette.setColor(QPalette.ColorRole.Highlight, QColor(42, 130, 218))
+    palette.setColor(QPalette.ColorRole.Window, QColor(COLORS["background"]))
+    palette.setColor(QPalette.ColorRole.WindowText, QColor(COLORS["text"]))
+    palette.setColor(QPalette.ColorRole.Base, QColor(COLORS["surface"]))
+    palette.setColor(QPalette.ColorRole.AlternateBase, QColor(COLORS["table_alt"]))
+    palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(COLORS["surface"]))
+    palette.setColor(QPalette.ColorRole.ToolTipText, QColor(COLORS["text"]))
+    palette.setColor(QPalette.ColorRole.Text, QColor(COLORS["text"]))
+    palette.setColor(QPalette.ColorRole.Button, QColor(COLORS["surface"]))
+    palette.setColor(QPalette.ColorRole.ButtonText, QColor(COLORS["text"]))
+    palette.setColor(QPalette.ColorRole.BrightText, QColor(COLORS["error"]))
+    palette.setColor(QPalette.ColorRole.Link, QColor(COLORS["accent"]))
+    palette.setColor(QPalette.ColorRole.Highlight, QColor(COLORS["accent"]))
     palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.black)
 
-    palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, QColor(127, 127, 127))
-    palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, QColor(127, 127, 127))
-    palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor(127, 127, 127))
+    palette.setColor(
+        QPalette.ColorGroup.Disabled,
+        QPalette.ColorRole.WindowText,
+        QColor(COLORS["text_secondary"]),
+    )
+    palette.setColor(
+        QPalette.ColorGroup.Disabled,
+        QPalette.ColorRole.Text,
+        QColor(COLORS["text_secondary"]),
+    )
+    palette.setColor(
+        QPalette.ColorGroup.Disabled,
+        QPalette.ColorRole.ButtonText,
+        QColor(COLORS["text_secondary"]),
+    )
 
     app.setPalette(palette)
+
+    # Apply global stylesheet
+    app.setStyleSheet(get_stylesheet())
 
 
 def launch_app() -> int:

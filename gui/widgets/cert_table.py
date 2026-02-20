@@ -1,4 +1,4 @@
-"""Certification table with checkboxes."""
+"""Certification table with checkboxes and modern styling."""
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 )
 
 from database.models import Certification
+from gui.theme import COLORS, SPACING
 
 
 class CertificationTable(QWidget):
@@ -29,6 +30,7 @@ class CertificationTable(QWidget):
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(SPACING["sm"])
 
         # Table
         self._table = QTableWidget()
@@ -38,6 +40,14 @@ class CertificationTable(QWidget):
         self._table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self._table.verticalHeader().setVisible(False)
         self._table.setAlternatingRowColors(True)
+        self._table.setShowGrid(False)
+        self._table.setStyleSheet(f"""
+            QTableWidget {{
+                background-color: {COLORS['background']};
+                border: 1px solid {COLORS['border']};
+                border-radius: 8px;
+            }}
+        """)
 
         # Column sizing
         header = self._table.horizontalHeader()
@@ -46,25 +56,33 @@ class CertificationTable(QWidget):
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)  # Customer
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)  # PO#
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)  # Files
-        self._table.setColumnWidth(0, 30)
-        self._table.setColumnWidth(4, 50)
+        self._table.setColumnWidth(0, 40)
+        self._table.setColumnWidth(4, 60)
+
+        # Row height
+        self._table.verticalHeader().setDefaultSectionSize(42)
 
         layout.addWidget(self._table)
 
         # Buttons row
-        btn_layout = QHBoxLayout()
+        self._btn_layout = QHBoxLayout()
+        self._btn_layout.setSpacing(SPACING["sm"])
 
         self._select_all_btn = QPushButton("Select All")
         self._select_all_btn.clicked.connect(self._select_all)
-        btn_layout.addWidget(self._select_all_btn)
+        self._btn_layout.addWidget(self._select_all_btn)
 
-        self._deselect_all_btn = QPushButton("Deselect All")
+        self._deselect_all_btn = QPushButton("Clear")
         self._deselect_all_btn.clicked.connect(self._deselect_all)
-        btn_layout.addWidget(self._deselect_all_btn)
+        self._btn_layout.addWidget(self._deselect_all_btn)
 
-        btn_layout.addStretch()
+        self._btn_layout.addStretch()
 
-        layout.addLayout(btn_layout)
+        layout.addLayout(self._btn_layout)
+
+    def add_toolbar_widget(self, widget: QWidget) -> None:
+        """Add a widget to the toolbar row (after the stretch)."""
+        self._btn_layout.addWidget(widget)
 
     def set_certifications(self, certifications: list[Certification]) -> None:
         """Set the certifications to display."""
@@ -83,17 +101,26 @@ class CertificationTable(QWidget):
             self._table.setCellWidget(row, 0, checkbox_widget)
 
             # Cert No
-            self._table.setItem(row, 1, QTableWidgetItem(cert.crt_cert_no))
+            cert_item = QTableWidgetItem(cert.crt_cert_no)
+            cert_item.setFlags(cert_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self._table.setItem(row, 1, cert_item)
 
             # Customer
-            self._table.setItem(row, 2, QTableWidgetItem(cert.crt_cust_name))
+            cust_item = QTableWidgetItem(cert.crt_cust_name)
+            cust_item.setFlags(cust_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self._table.setItem(row, 2, cust_item)
 
             # PO#
-            self._table.setItem(row, 3, QTableWidgetItem(cert.crt_po_number or ""))
+            po_item = QTableWidgetItem(cert.crt_po_number or "")
+            po_item.setFlags(po_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self._table.setItem(row, 3, po_item)
 
             # File count
             file_count = len(cert.media_files)
-            self._table.setItem(row, 4, QTableWidgetItem(str(file_count)))
+            files_item = QTableWidgetItem(str(file_count))
+            files_item.setFlags(files_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            files_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self._table.setItem(row, 4, files_item)
 
         self.selection_changed.emit()
 
