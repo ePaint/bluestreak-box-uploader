@@ -28,6 +28,7 @@ settings.toml
 
 # Test databases and pytest
 *.db
+!tests/fixtures/*.db
 .pytest_cache/
 .pytest_tmp/
 
@@ -40,6 +41,7 @@ Thumbs.db
 
 # Temp folder (development files not for commit)
 temp/
+!tests/fixtures/media/
 
 # Keep config templates but not actual configs with secrets
 *.json

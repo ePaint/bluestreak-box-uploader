@@ -9,14 +9,14 @@ from database.queries import query_certifications_by_order, get_customer_by_id
 class TestConnection:
     """Tests for database connection."""
 
-    def test_sqlite_connection(self, sqlite_config):
+    def test_sqlite_connection(self, fixture_config):
         """Test SQLite connection works."""
-        success, message = check_connection(sqlite_config)
+        success, message = check_connection(fixture_config)
         assert success, f"Connection failed: {message}"
 
-    def test_sqlite_param_conversion(self, sqlite_config):
+    def test_sqlite_param_conversion(self, fixture_config):
         """Test @param to ? conversion for SQLite."""
-        conn = get_connection(sqlite_config)
+        conn = get_connection(fixture_config)
         cursor = conn.cursor()
 
         # Test with named parameter
@@ -33,9 +33,9 @@ class TestConnection:
 class TestQueries:
     """Tests for database queries."""
 
-    def test_query_certifications_by_order(self, sqlite_config):
+    def test_query_certifications_by_order(self, fixture_config):
         """Test querying certifications for an order."""
-        conn = get_connection(sqlite_config)
+        conn = get_connection(fixture_config)
         certs = query_certifications_by_order(conn, 444337)
         conn.close()
 
@@ -51,28 +51,27 @@ class TestQueries:
         cert6 = next(c for c in certs if c.crt_cert_no == "444337-2-3")
         assert len(cert6.media_files) == 4
 
-    def test_query_nonexistent_order(self, sqlite_config):
+    def test_query_nonexistent_order(self, fixture_config):
         """Test querying non-existent order returns empty list."""
-        conn = get_connection(sqlite_config)
+        conn = get_connection(fixture_config)
         certs = query_certifications_by_order(conn, 999999)
         conn.close()
 
         assert len(certs) == 0
 
-    def test_get_customer_by_id(self, sqlite_config):
+    def test_get_customer_by_id(self, fixture_config):
         """Test getting customer by ID."""
-        conn = get_connection(sqlite_config)
+        conn = get_connection(fixture_config)
         customer = get_customer_by_id(conn, 1916)
         conn.close()
 
         assert customer is not None
         assert customer.cst_name == "Burton Industries Inc."
-        # Note: cst_integration_id is NULL in test data
-        assert customer.cst_integration_id is None
+        assert customer.cst_integration_id == "366380413888"
 
-    def test_get_nonexistent_customer(self, sqlite_config):
+    def test_get_nonexistent_customer(self, fixture_config):
         """Test getting non-existent customer returns None."""
-        conn = get_connection(sqlite_config)
+        conn = get_connection(fixture_config)
         customer = get_customer_by_id(conn, 999999)
         conn.close()
 
@@ -82,9 +81,9 @@ class TestQueries:
 class TestMediaFiles:
     """Tests for media file handling."""
 
-    def test_media_file_paths(self, sqlite_config):
+    def test_media_file_paths(self, fixture_config):
         """Test media file paths are correctly retrieved."""
-        conn = get_connection(sqlite_config)
+        conn = get_connection(fixture_config)
         certs = query_certifications_by_order(conn, 444337)
         conn.close()
 
@@ -95,9 +94,9 @@ class TestMediaFiles:
         assert media.med_full_path == "202602/ApprovedCert_444337-1_263756.pdf"
         assert "Approved Certification" in media.med_description
 
-    def test_total_file_count(self, sqlite_config):
+    def test_total_file_count(self, fixture_config):
         """Test total file count across all certifications."""
-        conn = get_connection(sqlite_config)
+        conn = get_connection(fixture_config)
         certs = query_certifications_by_order(conn, 444337)
         conn.close()
 

@@ -22,3 +22,21 @@ def sqlite_config(test_db) -> DatabaseConfig:
         driver="sqlite",
         sqlite_path=str(test_db),
     )
+
+
+@pytest.fixture
+def fixture_db() -> Path:
+    """Path to the committed test database fixture."""
+    return Path(__file__).parent / "fixtures" / "test.db"
+
+
+@pytest.fixture
+def fixture_config(fixture_db) -> DatabaseConfig:
+    """Config using committed fixture database."""
+    return DatabaseConfig(driver="sqlite", sqlite_path=str(fixture_db))
+
+
+@pytest.fixture
+def media_base_path() -> Path:
+    """Path to test media files."""
+    return Path(__file__).parent / "fixtures" / "media"
