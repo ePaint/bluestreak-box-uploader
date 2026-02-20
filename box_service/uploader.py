@@ -63,7 +63,7 @@ class BoxUploader:
         progress_callback: Callable[[int, int], None] | None = None,
     ) -> FileFull:
         """
-        Upload a file to Box.
+        Upload a file to Box. If file exists, uploads a new version.
 
         Args:
             local_path: Path to the local file
@@ -80,19 +80,17 @@ class BoxUploader:
         upload_name = filename or local_path.name
 
         try:
-            with open(local_path, "rb") as f:
-                file_content = f.read()
-
             from box_sdk_gen.managers.uploads import UploadFileAttributes, UploadFileAttributesParentField
 
-            # Use simple upload for files
-            uploaded_files = self.client.uploads.upload_file(
-                attributes=UploadFileAttributes(
-                    name=upload_name,
-                    parent=UploadFileAttributesParentField(id=folder_id),
-                ),
-                file=file_content,
-            )
+            # Use simple upload for files - SDK expects a file-like object
+            with open(local_path, "rb") as f:
+                uploaded_files = self.client.uploads.upload_file(
+                    attributes=UploadFileAttributes(
+                        name=upload_name,
+                        parent=UploadFileAttributesParentField(id=folder_id),
+                    ),
+                    file=f,
+                )
 
             if uploaded_files.entries:
                 return uploaded_files.entries[0]
@@ -101,10 +99,39 @@ class BoxUploader:
 
         except Exception as e:
             if "item_name_in_use" in str(e).lower():
-                # File already exists - this is okay for our use case
-                # Could implement versioning here if needed
-                raise BoxUploadError(f"File already exists: {upload_name}")
+                # File already exists - upload new version
+                return self._upload_new_version(local_path, folder_id, upload_name)
             raise BoxUploadError(f"Upload failed: {e}")
+
+    def _upload_new_version(
+        self, local_path: Path, folder_id: str, filename: str
+    ) -> FileFull:
+        """Upload a new version of an existing file."""
+        from box_sdk_gen.managers.uploads import UploadFileVersionAttributes
+
+        # Find the existing file
+        items = self.client.folders.get_folder_items(folder_id)
+        existing_file_id = None
+        for item in items.entries:
+            if item.type == "file" and item.name == filename:
+                existing_file_id = item.id
+                break
+
+        if not existing_file_id:
+            raise BoxUploadError(f"Could not find existing file: {filename}")
+
+        # Upload new version
+        with open(local_path, "rb") as f:
+            uploaded_files = self.client.uploads.upload_file_version(
+                file_id=existing_file_id,
+                attributes=UploadFileVersionAttributes(name=filename),
+                file=f,
+            )
+
+        if uploaded_files.entries:
+            return uploaded_files.entries[0]
+        else:
+            raise BoxUploadError("Version upload succeeded but no file returned")
 
     def upload_certification_files(
         self,

@@ -41,6 +41,7 @@ class CertificationTable(QWidget):
         self._table.verticalHeader().setVisible(False)
         self._table.setAlternatingRowColors(True)
         self._table.setShowGrid(False)
+        self._table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
         self._table.setStyleSheet(f"""
             QTableWidget {{
                 background-color: {COLORS['background']};
@@ -54,7 +55,7 @@ class CertificationTable(QWidget):
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)  # Checkbox
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)  # Cert No
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)  # Customer
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)  # PO#
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)  # PO#
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)  # Files
         self._table.setColumnWidth(0, 40)
         self._table.setColumnWidth(4, 60)

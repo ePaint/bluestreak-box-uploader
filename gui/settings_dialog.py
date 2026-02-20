@@ -138,6 +138,16 @@ class SettingsDialog(QDialog):
         self._db_test_btn.clicked.connect(self._test_db_connection)
         layout.addRow("", self._db_test_btn)
 
+        # Search result limit
+        self._search_limit = QSpinBox()
+        self._search_limit.setRange(10, 1000)
+        self._search_limit.setValue(100)
+        self._search_limit.setSuffix(" orders")
+        self._search_limit.setToolTip(
+            "Maximum number of distinct orders to return when searching by partial order ID"
+        )
+        layout.addRow("Search Result Limit:", self._search_limit)
+
     def _setup_box_tab(self) -> None:
         layout = QFormLayout(self._box_tab)
         layout.setSpacing(SPACING["sm"])
@@ -203,6 +213,7 @@ class SettingsDialog(QDialog):
         self._db_username.setText(settings.get("db_username", ""))
         self._db_password.setText(settings.get("db_password", ""))
         self._db_sqlite_path.setText(settings.get("db_sqlite_path", ""))
+        self._search_limit.setValue(settings.get("search_result_limit", 100))
 
         self._box_jwt_path.setText(settings.get("box_jwt_config_path", ""))
 
@@ -221,6 +232,7 @@ class SettingsDialog(QDialog):
         settings["db_username"] = self._db_username.text()
         settings["db_password"] = self._db_password.text()
         settings["db_sqlite_path"] = self._db_sqlite_path.text()
+        settings["search_result_limit"] = self._search_limit.value()
 
         settings["box_jwt_config_path"] = self._box_jwt_path.text()
 

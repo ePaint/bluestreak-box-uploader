@@ -20,6 +20,7 @@ SetupIconFile=app.ico
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
+UninstallDisplayIcon={app}\{#MyAppExeName}
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
 
@@ -40,3 +41,23 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+
+[Code]
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  AppDataPath: String;
+begin
+  if CurUninstallStep = usPostUninstall then
+  begin
+    AppDataPath := ExpandConstant('{userappdata}\BluestreakBoxUploader');
+    if DirExists(AppDataPath) then
+    begin
+      if MsgBox('Do you want to delete your settings and data?' + #13#10 + #13#10 +
+                'This will remove your saved configuration, including database credentials and preferences.',
+                mbConfirmation, MB_YESNO) = IDYES then
+      begin
+        DelTree(AppDataPath, True, True, True);
+      end;
+    end;
+  end;
+end;

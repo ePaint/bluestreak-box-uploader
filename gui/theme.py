@@ -20,6 +20,7 @@ COLORS = {
     "accent": "#00b4d8",           # Teal accent
     "accent_hover": "#00c4eb",     # Teal hover
     "accent_pressed": "#0096b4",   # Teal pressed
+    "selection": "#1a5a6e",        # Muted teal for row selection
     "success": "#4ade80",          # Green
     "error": "#f87171",            # Red
     "warning": "#fbbf24",          # Yellow
@@ -198,8 +199,8 @@ def get_stylesheet() -> str:
             border: none;
             border-radius: {RADIUS['md']}px;
             gridline-color: {COLORS['border']};
-            selection-background-color: {COLORS['accent']};
-            selection-color: #000000;
+            selection-background-color: {COLORS['selection']};
+            selection-color: {COLORS['text']};
         }}
 
         QTableWidget::item {{
@@ -208,8 +209,8 @@ def get_stylesheet() -> str:
         }}
 
         QTableWidget::item:selected {{
-            background-color: {COLORS['accent']};
-            color: #000000;
+            background-color: {COLORS['selection']};
+            color: {COLORS['text']};
         }}
 
         QHeaderView::section {{

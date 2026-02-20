@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from PySide6.QtGui import QAction, QKeySequence
+from PySide6.QtGui import QAction, QIcon, QKeySequence
 from PySide6.QtWidgets import (
     QMainWindow,
     QWidget,
@@ -21,7 +21,7 @@ from settings.config import get_database_config
 from gui.widgets import CertificationTable, LogViewer, UploadProgressWidget
 from gui.widgets.card import Card
 from gui.settings_dialog import SettingsDialog
-from gui.workers import QueryWorker, UploadWorker
+from gui.workers import QueryWorker, PartialQueryWorker, UploadWorker
 from gui.theme import COLORS, SPACING, get_icon
 
 
@@ -31,6 +31,9 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Bluestreak Box Uploader")
+        icon_path = Path(__file__).parent / "assets" / "app_icon.ico"
+        if icon_path.exists():
+            self.setWindowIcon(QIcon(str(icon_path)))
         self.setMinimumSize(850, 750)
         self.resize(900, 900)
 
@@ -74,7 +77,7 @@ class MainWindow(QMainWindow):
         lookup_layout.setSpacing(SPACING["sm"])
 
         self._order_input = QLineEdit()
-        self._order_input.setPlaceholderText("Enter order ID (e.g., 444337)")
+        self._order_input.setPlaceholderText("Search order ID (min 3 chars, e.g., 443)")
         self._order_input.returnPressed.connect(self._search_order)
         lookup_layout.addWidget(self._order_input, stretch=1)
 
@@ -113,6 +116,8 @@ class MainWindow(QMainWindow):
                 border: 1px solid rgba(251, 191, 36, 0.3);
             }}
         """)
+        self._warning_label.setWordWrap(True)
+        self._warning_label.setMinimumHeight(50)  # Reserve space to prevent layout shift
         self._warning_label.setVisible(False)
         self._certs_card.add_widget(self._warning_label)
 
@@ -201,21 +206,19 @@ class MainWindow(QMainWindow):
         save_settings(settings)
 
     def _search_order(self) -> None:
-        """Search for certifications by order ID."""
-        order_text = self._order_input.text().strip()
-        if not order_text:
-            QMessageBox.warning(self, "Input Required", "Please enter an Order ID.")
+        """Search for certifications by partial order ID (minimum 3 characters)."""
+        search_text = self._order_input.text().strip()
+        if not search_text:
+            self._log.log_warning("Please enter an Order ID.")
             return
 
-        try:
-            order_id = int(order_text)
-        except ValueError:
-            QMessageBox.warning(self, "Invalid Input", "Order ID must be a number.")
+        if len(search_text) < 3:
+            self._log.log_warning("Please enter at least 3 characters to search.")
             return
 
-        # Save last order
+        # Save last search
         settings = load_settings()
-        settings["last_order_id"] = order_text
+        settings["last_order_id"] = search_text
         save_settings(settings)
 
         # Clear previous results
@@ -224,11 +227,14 @@ class MainWindow(QMainWindow):
         self._customer = None
         self._progress_widget.reset()
         self._log.clear()
-        self._log.log(f"Searching for order {order_id}...")
 
-        # Start query
+        # Get search limit from settings
+        limit = settings.get("search_result_limit", 100)
+        self._log.log(f"Searching for orders containing '{search_text}'...")
+
+        # Start partial query
         config = get_database_config()
-        self._query_worker = QueryWorker(config, order_id)
+        self._query_worker = PartialQueryWorker(config, search_text, limit)
         self._query_worker.finished.connect(self._on_query_finished)
         self._query_worker.error.connect(self._on_query_error)
         self._query_worker.start()
@@ -359,7 +365,11 @@ class MainWindow(QMainWindow):
 
     def _on_upload_finished(self, success_count: int, failed_count: int) -> None:
         """Handle upload completion."""
-        self._upload_worker = None
+        # Safely clean up the worker thread
+        if self._upload_worker:
+            self._upload_worker.wait()
+            self._upload_worker.deleteLater()
+            self._upload_worker = None
         total = success_count + failed_count
         self._progress_widget.set_completed(success_count, total)
 
@@ -378,7 +388,11 @@ class MainWindow(QMainWindow):
 
     def _on_upload_error(self, message: str) -> None:
         """Handle upload error."""
-        self._upload_worker = None
+        # Safely clean up the worker thread
+        if self._upload_worker:
+            self._upload_worker.wait()
+            self._upload_worker.deleteLater()
+            self._upload_worker = None
         self._log.log_error(message)
         self._progress_widget.set_error(message)
         self._update_ui_state()

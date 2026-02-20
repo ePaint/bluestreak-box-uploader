@@ -45,6 +45,8 @@ DEFAULT_SETTINGS: dict = {
     # UI settings
     "auto_upload_single": True,
     "last_order_id": "",
+    # Search settings
+    "search_result_limit": 100,
 }
 
 

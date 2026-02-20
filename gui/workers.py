@@ -5,7 +5,7 @@ from pathlib import Path
 from PySide6.QtCore import QThread, Signal
 
 from database.connection import DatabaseConfig
-from database.queries import query_order_with_customer
+from database.queries import query_order_with_customer, query_partial_order_with_customer
 from database.models import Certification, Customer, UploadJob, UploadStatus
 from box_service import BoxUploader
 
@@ -24,6 +24,30 @@ class QueryWorker(QThread):
     def run(self) -> None:
         try:
             certs, customer = query_order_with_customer(self._config, self._order_id)
+            self.finished.emit(certs, customer)
+        except Exception as e:
+            self.error.emit(str(e))
+
+
+class PartialQueryWorker(QThread):
+    """Worker thread for querying certifications by partial order ID."""
+
+    finished = Signal(object, object)  # (list[Certification], Customer | None)
+    error = Signal(str)  # error message
+
+    def __init__(
+        self, config: DatabaseConfig, search_term: str, limit: int, parent=None
+    ):
+        super().__init__(parent)
+        self._config = config
+        self._search_term = search_term
+        self._limit = limit
+
+    def run(self) -> None:
+        try:
+            certs, customer = query_partial_order_with_customer(
+                self._config, self._search_term, self._limit
+            )
             self.finished.emit(certs, customer)
         except Exception as e:
             self.error.emit(str(e))
