@@ -31,18 +31,10 @@ class SQLiteConnection:
         self._conn.close()
 
 
-class SQLiteCursor:
-    """SQLite cursor wrapper that converts @param to ? placeholders."""
+class ParamConverterMixin:
+    """Mixin that converts @param syntax to ? placeholders."""
 
-    def __init__(self, cursor: sqlite3.Cursor):
-        self._cursor = cursor
-        self._param_names: list[str] = []
-
-    def execute(self, sql: str, params: dict | None = None) -> "SQLiteCursor":
-        """Execute SQL, converting @param syntax to ? placeholders."""
-        converted_sql, param_values = self._convert_params(sql, params or {})
-        self._cursor.execute(converted_sql, param_values)
-        return self
+    _param_names: list[str]
 
     def _convert_params(self, sql: str, params: dict) -> tuple[str, list]:
         """Convert @param syntax to ? and return ordered param values."""
@@ -57,6 +49,63 @@ class SQLiteCursor:
         converted_sql = re.sub(pattern, replace_param, sql)
         param_values = [params.get(name) for name in self._param_names]
         return converted_sql, param_values
+
+
+class SQLiteCursor(ParamConverterMixin):
+    """SQLite cursor wrapper that converts @param to ? placeholders."""
+
+    def __init__(self, cursor: sqlite3.Cursor):
+        self._cursor = cursor
+        self._param_names: list[str] = []
+
+    def execute(self, sql: str, params: dict | None = None) -> "SQLiteCursor":
+        """Execute SQL, converting @param syntax to ? placeholders."""
+        converted_sql, param_values = self._convert_params(sql, params or {})
+        self._cursor.execute(converted_sql, param_values)
+        return self
+
+    def fetchall(self) -> list:
+        return self._cursor.fetchall()
+
+    def fetchone(self):
+        return self._cursor.fetchone()
+
+    def close(self) -> None:
+        self._cursor.close()
+
+    @property
+    def description(self):
+        return self._cursor.description
+
+
+class PyODBCConnection:
+    """PyODBC connection wrapper that converts @param to ? placeholders."""
+
+    def __init__(self, connection):
+        self._conn = connection
+
+    def cursor(self) -> "PyODBCCursor":
+        return PyODBCCursor(self._conn.cursor())
+
+    def commit(self) -> None:
+        self._conn.commit()
+
+    def close(self) -> None:
+        self._conn.close()
+
+
+class PyODBCCursor(ParamConverterMixin):
+    """PyODBC cursor wrapper that converts @param to ? placeholders."""
+
+    def __init__(self, cursor):
+        self._cursor = cursor
+        self._param_names: list[str] = []
+
+    def execute(self, sql: str, params: dict | None = None) -> "PyODBCCursor":
+        """Execute SQL, converting @param syntax to ? placeholders."""
+        converted_sql, param_values = self._convert_params(sql, params or {})
+        self._cursor.execute(converted_sql, param_values)
+        return self
 
     def fetchall(self) -> list:
         return self._cursor.fetchall()
@@ -99,7 +148,7 @@ def get_connection(config: DatabaseConfig) -> DatabaseConnection:
             f"UID={config.username};"
             f"PWD={config.password}"
         )
-        return pyodbc.connect(connection_string)
+        return PyODBCConnection(pyodbc.connect(connection_string))
     else:
         raise ValueError(f"Unsupported driver: {config.driver}")
 
