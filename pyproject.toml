@@ -1,6 +1,6 @@
 [project]
 name = "bluestreak-box-uploader"
-version = "0.1.0"
+version = "0.1.1"
 description = "Upload Bluestreak certifications to Box.com"
 readme = "README.md"
 requires-python = ">=3.12"
