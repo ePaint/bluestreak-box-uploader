@@ -1,6 +1,7 @@
 """Box.com upload service."""
 
 import json
+import time
 from pathlib import Path
 from typing import Callable
 
@@ -8,7 +9,7 @@ from box_sdk_gen import BoxClient, BoxJWTAuth, JWTConfig
 from box_sdk_gen.schemas import FileFull, UserFull
 
 from box_service.exceptions import BoxAuthError, BoxUploadError
-from box_service.folder_manager import FolderManager
+from box_service.folder_manager import FolderManager, _is_jti_error, _retry_on_jti_error
 from database.models import Certification, MediaFile, UploadJob, UploadStatus
 
 
@@ -79,29 +80,41 @@ class BoxUploader:
 
         upload_name = filename or local_path.name
 
-        try:
-            from box_sdk_gen.managers.uploads import UploadFileAttributes, UploadFileAttributesParentField
+        from box_sdk_gen.managers.uploads import UploadFileAttributes, UploadFileAttributesParentField
 
-            # Use simple upload for files - SDK expects a file-like object
-            with open(local_path, "rb") as f:
-                uploaded_files = self.client.uploads.upload_file(
-                    attributes=UploadFileAttributes(
-                        name=upload_name,
-                        parent=UploadFileAttributesParentField(id=folder_id),
-                    ),
-                    file=f,
-                )
+        # Retry logic for jti errors - need to reopen file on each attempt
+        max_retries = 3
+        base_delay = 1.0
+        last_error = None
 
-            if uploaded_files.entries:
-                return uploaded_files.entries[0]
-            else:
-                raise BoxUploadError("Upload succeeded but no file returned")
+        for attempt in range(max_retries):
+            try:
+                with open(local_path, "rb") as f:
+                    uploaded_files = self.client.uploads.upload_file(
+                        attributes=UploadFileAttributes(
+                            name=upload_name,
+                            parent=UploadFileAttributesParentField(id=folder_id),
+                        ),
+                        file=f,
+                    )
 
-        except Exception as e:
-            if "item_name_in_use" in str(e).lower():
-                # File already exists - upload new version
-                return self._upload_new_version(local_path, folder_id, upload_name)
-            raise BoxUploadError(f"Upload failed: {e}")
+                if uploaded_files.entries:
+                    return uploaded_files.entries[0]
+                else:
+                    raise BoxUploadError("Upload succeeded but no file returned")
+
+            except Exception as e:
+                if "item_name_in_use" in str(e).lower():
+                    # File already exists - upload new version
+                    return self._upload_new_version(local_path, folder_id, upload_name)
+                elif _is_jti_error(e) and attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt)
+                    time.sleep(delay)
+                    last_error = e
+                else:
+                    raise BoxUploadError(f"Upload failed: {e}")
+
+        raise BoxUploadError(f"Upload failed after retries: {last_error}")
 
     def _upload_new_version(
         self, local_path: Path, folder_id: str, filename: str
@@ -109,8 +122,8 @@ class BoxUploader:
         """Upload a new version of an existing file."""
         from box_sdk_gen.managers.uploads import UploadFileVersionAttributes
 
-        # Find the existing file
-        items = self.client.folders.get_folder_items(folder_id)
+        # Find the existing file (with retry)
+        items = _retry_on_jti_error(self.client.folders.get_folder_items, folder_id)
         existing_file_id = None
         for item in items.entries:
             if item.type == "file" and item.name == filename:
@@ -120,18 +133,34 @@ class BoxUploader:
         if not existing_file_id:
             raise BoxUploadError(f"Could not find existing file: {filename}")
 
-        # Upload new version
-        with open(local_path, "rb") as f:
-            uploaded_files = self.client.uploads.upload_file_version(
-                file_id=existing_file_id,
-                attributes=UploadFileVersionAttributes(name=filename),
-                file=f,
-            )
+        # Upload new version with retry logic
+        max_retries = 3
+        base_delay = 1.0
+        last_error = None
 
-        if uploaded_files.entries:
-            return uploaded_files.entries[0]
-        else:
-            raise BoxUploadError("Version upload succeeded but no file returned")
+        for attempt in range(max_retries):
+            try:
+                with open(local_path, "rb") as f:
+                    uploaded_files = self.client.uploads.upload_file_version(
+                        file_id=existing_file_id,
+                        attributes=UploadFileVersionAttributes(name=filename),
+                        file=f,
+                    )
+
+                if uploaded_files.entries:
+                    return uploaded_files.entries[0]
+                else:
+                    raise BoxUploadError("Version upload succeeded but no file returned")
+
+            except Exception as e:
+                if _is_jti_error(e) and attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt)
+                    time.sleep(delay)
+                    last_error = e
+                else:
+                    raise BoxUploadError(f"Version upload failed: {e}")
+
+        raise BoxUploadError(f"Version upload failed after retries: {last_error}")
 
     def upload_certification_files(
         self,

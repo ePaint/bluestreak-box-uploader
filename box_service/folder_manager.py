@@ -1,9 +1,33 @@
 """Box folder management with caching."""
 
+import time
+
 from box_sdk_gen import BoxClient
 from box_sdk_gen.schemas import FolderFull
 
 from box_service.exceptions import BoxFolderError
+
+
+def _is_jti_error(error: Exception) -> bool:
+    """Check if error is a JWT jti collision error."""
+    error_str = str(error).lower()
+    return "invalid_grant" in error_str and "jti" in error_str
+
+
+def _retry_on_jti_error(func, *args, max_retries: int = 3, base_delay: float = 1.0, **kwargs):
+    """Retry a function if it fails with a JWT jti collision error."""
+    last_error = None
+    for attempt in range(max_retries):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            if _is_jti_error(e) and attempt < max_retries - 1:
+                delay = base_delay * (2 ** attempt)  # Exponential backoff: 1s, 2s, 4s
+                time.sleep(delay)
+                last_error = e
+            else:
+                raise
+    raise last_error
 
 
 class FolderManager:
@@ -37,7 +61,9 @@ class FolderManager:
     def _find_folder(self, parent_id: str, name: str) -> str | None:
         """Find a folder by name in parent, returns folder ID or None."""
         try:
-            items = self._client.folders.get_folder_items(parent_id)
+            items = _retry_on_jti_error(
+                self._client.folders.get_folder_items, parent_id
+            )
             for item in items.entries:
                 if item.type == "folder" and item.name == name:
                     return item.id
@@ -50,7 +76,8 @@ class FolderManager:
         try:
             from box_sdk_gen.managers.folders import CreateFolderParent
 
-            folder = self._client.folders.create_folder(
+            folder = _retry_on_jti_error(
+                self._client.folders.create_folder,
                 name=name,
                 parent=CreateFolderParent(id=parent_id),
             )
