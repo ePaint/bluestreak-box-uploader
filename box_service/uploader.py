@@ -183,9 +183,12 @@ class BoxUploader:
         """
         jobs: list[UploadJob] = []
 
-        # Create folder path: [OrderID] (PO#[PONumber])/[CertNo]
-        po_part = f" (PO#{certification.crt_po_number})" if certification.crt_po_number else ""
-        folder_path = f"{certification.crt_or_id}{po_part}/{certification.crt_cert_no}"
+        # Create folder path: PO#[PONumber] (BII WO#[OrderID])/Cert#[CertNo]
+        if certification.crt_po_number:
+            parent_folder = f"PO#{certification.crt_po_number} (BII WO#{certification.crt_or_id})"
+        else:
+            parent_folder = f"BII WO#{certification.crt_or_id}"
+        folder_path = f"{parent_folder}/Cert#{certification.crt_cert_no}"
 
         try:
             target_folder_id = self.folder_manager.ensure_folder_path(root_folder_id, folder_path)
