@@ -468,25 +468,168 @@ def get_stylesheet() -> str:
         QMessageBox QLabel {{
             color: {COLORS['text']};
         }}
-    """
 
+        /* === COMPONENT-SPECIFIC STYLES === */
 
-def get_card_style(hover: bool = True) -> str:
-    """Get stylesheet for card widgets."""
-    hover_style = f"""
-        Card:hover {{
-            background-color: {COLORS['surface_hover']};
+        /* Tab widget - underline style for cards */
+        QTabWidget#logTabs::pane {{
+            border: none;
+            background: transparent;
+        }}
+        QTabWidget#logTabs QTabBar::tab {{
+            background: transparent;
+            color: {COLORS['text_secondary']};
+            border: none;
+            border-bottom: 2px solid transparent;
+            padding: 8px 16px;
+        }}
+        QTabWidget#logTabs QTabBar::tab:selected {{
+            color: {COLORS['accent']};
+            border-bottom-color: {COLORS['accent']};
+        }}
+        QTabWidget#logTabs QTabBar::tab:hover:!selected {{
+            color: {COLORS['text']};
+        }}
+
+        /* Order input (objectName: orderInput) */
+        QLineEdit#orderInput {{
+            font-size: {FONT_SIZE['xxl']}pt;
+            font-weight: bold;
+            padding: {FONT_SIZE['lg']}px {FONT_SIZE['xl']}px;
+            border: 2px solid {COLORS['border']};
+            border-radius: 8px;
+        }}
+        QLineEdit#orderInput:focus {{
             border-color: {COLORS['accent']};
         }}
-    """ if hover else ""
 
-    return f"""
+        /* Warning label (objectName: warningLabel) */
+        QLabel#warningLabel {{
+            color: {COLORS['warning']};
+            background: rgba(251, 191, 36, 0.15);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+        }}
+
+        /* Card components */
+        QLabel#cardTitle {{
+            font-size: {FONT_SIZE['lg']}pt;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+        }}
+        QLabel#cardBadge {{
+            color: {COLORS['text_secondary']};
+            font-size: {FONT_SIZE['md']}pt;
+            background: {COLORS['background']};
+            padding: 4px 8px;
+            border-radius: {RADIUS['sm']}px;
+        }}
+        QLabel#cardBadge[highlight="true"] {{
+            color: {COLORS['text']};
+        }}
+        QPushButton#collapseBtn {{
+            background: transparent;
+            border: none;
+        }}
+
+        /* Card frame */
         Card {{
             background-color: {COLORS['surface']};
             border: 1px solid {COLORS['border']};
             border-radius: {RADIUS['lg']}px;
         }}
-        {hover_style}
+        Card[hover="true"]:hover {{
+            background-color: {COLORS['surface_hover']};
+            border-color: {COLORS['accent']};
+        }}
+
+        /* Tree widgets (QTreeWidget common style) */
+        QTreeWidget {{
+            background: {COLORS['background']};
+            border: 1px solid {COLORS['border']};
+            border-radius: 8px;
+        }}
+        QTreeWidget::item {{
+            padding: 4px;
+            min-height: 28px;
+        }}
+        QTreeWidget::item:selected {{
+            background: {COLORS['selection']};
+        }}
+        QTreeWidget::indicator {{
+            width: 18px;
+            height: 18px;
+            border: 2px solid {COLORS['border']};
+            border-radius: {RADIUS['sm']}px;
+            background-color: {COLORS['surface']};
+        }}
+        QTreeWidget::indicator:hover {{
+            border-color: {COLORS['accent']};
+        }}
+        QTreeWidget::indicator:checked {{
+            background-color: {COLORS['accent']};
+            border-color: {COLORS['accent']};
+            image: url({checkmark_path});
+        }}
+        QTreeWidget::indicator:indeterminate {{
+            background-color: {COLORS['accent']};
+            border-color: {COLORS['accent']};
+        }}
+
+        /* Log viewer (QTextEdit#logViewer) */
+        QTextEdit#logViewer {{
+            background: {COLORS['background']};
+            border: 1px solid {COLORS['border']};
+            border-radius: {RADIUS['md']}px;
+            font-family: 'Cascadia Code', 'Consolas', monospace;
+            padding: 8px;
+        }}
+
+        /* Upload progress states (using properties) */
+        QLabel#uploadStatus {{
+            font-size: {FONT_SIZE['md']}pt;
+        }}
+        QLabel#uploadStatus[state="success"] {{
+            color: {COLORS['success']};
+            font-weight: bold;
+        }}
+        QLabel#uploadStatus[state="error"] {{
+            color: {COLORS['error']};
+            font-weight: bold;
+        }}
+        QProgressBar#uploadProgress {{
+            background-color: {COLORS['background']};
+            border: none;
+            border-radius: {RADIUS['md']}px;
+            text-align: center;
+            font-size: {FONT_SIZE['md']}pt;
+            font-weight: bold;
+            padding: {FONT_SIZE['xs']}px;
+        }}
+        QProgressBar#uploadProgress::chunk {{
+            background: qlineargradient(
+                x1: 0, y1: 0, x2: 1, y2: 0,
+                stop: 0 {COLORS['accent']},
+                stop: 1 {COLORS['accent_hover']}
+            );
+            border-radius: {RADIUS['md']}px;
+        }}
+        QProgressBar#uploadProgress[state="success"]::chunk {{
+            background: {COLORS['success']};
+        }}
+        QProgressBar#uploadProgress[state="error"]::chunk {{
+            background: {COLORS['error']};
+        }}
+
+        /* Help labels (objectName: helpLabel) */
+        QLabel#helpLabel {{
+            color: {COLORS['text_secondary']};
+            font-size: {FONT_SIZE['xs']}pt;
+            padding: 8px;
+            background: {COLORS['background']};
+            border-radius: {RADIUS['sm']}px;
+        }}
     """
 
 
@@ -496,6 +639,7 @@ ICONS = {
     "certificate": "fa5s.clipboard-list",
     "upload": "fa5s.cloud-upload-alt",
     "log": "fa5s.stream",
+    "history": "fa5s.history",
     "database": "fa5s.database",
     "box": "fa5s.box",
     "folder": "fa5s.folder-open",

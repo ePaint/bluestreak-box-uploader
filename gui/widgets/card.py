@@ -1,5 +1,6 @@
 """Reusable card widget with rounded corners and shadow effect."""
 
+import qtawesome as qta
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QFrame,
@@ -12,7 +13,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QColor, QIcon
 
-from gui.theme import COLORS, SPACING, RADIUS, FONT_SIZE
+from gui.theme import COLORS, SPACING
 
 
 class Card(QFrame):
@@ -65,46 +66,22 @@ class Card(QFrame):
 
             # Title
             self._title_label = QLabel(self._title)
-            self._title_label.setStyleSheet(f"""
-                QLabel {{
-                    color: {COLORS['text']};
-                    font-size: {FONT_SIZE['lg']}pt;
-                    font-weight: bold;
-                    letter-spacing: 0.5px;
-                }}
-            """)
+            self._title_label.setObjectName("cardTitle")
             header_layout.addWidget(self._title_label)
 
             # Badge placeholder (right side)
             self._badge_label = QLabel()
-            self._badge_label.setStyleSheet(f"""
-                QLabel {{
-                    color: {COLORS['text_secondary']};
-                    font-size: {FONT_SIZE['md']}pt;
-                    background-color: {COLORS['background']};
-                    padding: 4px 8px;
-                    border-radius: {RADIUS['sm']}px;
-                }}
-            """)
+            self._badge_label.setObjectName("cardBadge")
             self._badge_label.hide()
             header_layout.addStretch()
             header_layout.addWidget(self._badge_label)
 
             # Collapse button (if collapsible)
             if self._collapsible:
-                self._collapse_btn = QPushButton("▼" if not self._collapsed else "▶")
+                self._collapse_btn = QPushButton()
+                self._collapse_btn.setObjectName("collapseBtn")
                 self._collapse_btn.setFixedSize(24, 24)
-                self._collapse_btn.setStyleSheet(f"""
-                    QPushButton {{
-                        background-color: transparent;
-                        border: none;
-                        color: {COLORS['text_secondary']};
-                        font-size: {FONT_SIZE['sm']}pt;
-                    }}
-                    QPushButton:hover {{
-                        color: {COLORS['accent']};
-                    }}
-                """)
+                self._update_collapse_icon()
                 self._collapse_btn.clicked.connect(self._toggle_collapse)
                 header_layout.addWidget(self._collapse_btn)
 
@@ -126,24 +103,9 @@ class Card(QFrame):
         self.setGraphicsEffect(shadow)
 
     def _apply_style(self) -> None:
-        """Apply the card styling."""
-        hover_style = ""
+        """Apply the card styling via dynamic property."""
         if self._hover_effect:
-            hover_style = f"""
-                Card:hover {{
-                    background-color: {COLORS['surface_hover']};
-                    border-color: {COLORS['accent']};
-                }}
-            """
-
-        self.setStyleSheet(f"""
-            Card {{
-                background-color: {COLORS['surface']};
-                border: 1px solid {COLORS['border']};
-                border-radius: {RADIUS['lg']}px;
-            }}
-            {hover_style}
-        """)
+            self.setProperty("hover", True)
 
     def set_badge(self, text: str) -> None:
         """Set the badge text in the header."""
@@ -155,17 +117,10 @@ class Card(QFrame):
                 self._badge_label.hide()
 
     def set_badge_color(self, color: str) -> None:
-        """Set the badge background color."""
+        """Set the badge highlight state."""
         if hasattr(self, "_badge_label"):
-            self._badge_label.setStyleSheet(f"""
-                QLabel {{
-                    color: {COLORS['text']};
-                    font-size: {FONT_SIZE['md']}pt;
-                    background-color: {color};
-                    padding: 4px 8px;
-                    border-radius: {RADIUS['sm']}px;
-                }}
-            """)
+            self._badge_label.setProperty("highlight", True)
+            self._badge_label.style().polish(self._badge_label)
 
     def content_layout(self) -> QVBoxLayout:
         """Get the content layout to add widgets."""
@@ -183,12 +138,18 @@ class Card(QFrame):
         """Add stretch to the content layout."""
         self._content_layout.addStretch()
 
+    def _update_collapse_icon(self) -> None:
+        """Update the collapse button icon based on state."""
+        if hasattr(self, "_collapse_btn"):
+            icon_name = "fa5s.chevron-right" if self._collapsed else "fa5s.chevron-down"
+            icon = qta.icon(icon_name, color=COLORS["text"])
+            self._collapse_btn.setIcon(icon)
+
     def _toggle_collapse(self) -> None:
         """Toggle the collapse state."""
         self._collapsed = not self._collapsed
         self._content_widget.setVisible(not self._collapsed)
-        if hasattr(self, "_collapse_btn"):
-            self._collapse_btn.setText("▶" if self._collapsed else "▼")
+        self._update_collapse_icon()
         self.collapsed_changed.emit(self._collapsed)
 
     def is_collapsed(self) -> bool:
@@ -204,3 +165,15 @@ class Card(QFrame):
         """Expand the card if it's collapsible and collapsed."""
         if self._collapsible and self._collapsed:
             self._toggle_collapse()
+
+    def set_collapsible(self, collapsible: bool) -> None:
+        """Enable or disable collapsibility. Expands the card when disabling."""
+        if not hasattr(self, "_collapse_btn"):
+            return
+        self._collapsible = collapsible
+        self._collapse_btn.setVisible(collapsible)
+        if not collapsible and self._collapsed:
+            # Force expand when disabling collapsibility
+            self._collapsed = False
+            self._content_widget.setVisible(True)
+            self._update_collapse_icon()

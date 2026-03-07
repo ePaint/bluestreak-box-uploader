@@ -15,16 +15,20 @@ from PySide6.QtWidgets import (
     QPushButton,
     QCheckBox,
     QMessageBox,
+    QTabWidget,
+    QSplitter,
 )
+
+WIDE_LAYOUT_THRESHOLD = 1200  # px
 
 from database.models import Certification, Customer
 from settings import load_settings, save_settings
 from settings.config import get_database_config
-from gui.widgets import CertificationTable, LogViewer, UploadProgressWidget
+from gui.widgets import CertificationTable, HistoryViewer, LogViewer, UploadProgressWidget
 from gui.widgets.card import Card
 from gui.settings_dialog import SettingsDialog
 from gui.workers import QueryWorker, PartialQueryWorker, UploadWorker
-from gui.theme import COLORS, SPACING, FONT_SIZE, get_icon
+from gui.theme import COLORS, SPACING, get_icon
 
 
 class MainWindow(QMainWindow):
@@ -37,12 +41,13 @@ class MainWindow(QMainWindow):
         if icon_path.exists():
             self.setWindowIcon(QIcon(str(icon_path)))
         self.setMinimumSize(850, 750)
-        self.resize(900, 900)
+        self.resize(900, 1000)
 
         self._certifications: list[Certification] = []
         self._customer: Customer | None = None
         self._query_worker: QueryWorker | None = None
         self._upload_worker: UploadWorker | None = None
+        self._is_wide_layout = False
 
         self._setup_menu()
         self._setup_ui()
@@ -79,23 +84,11 @@ class MainWindow(QMainWindow):
         lookup_layout.setSpacing(SPACING["sm"])
 
         self._order_input = QLineEdit()
-        self._order_input.setPlaceholderText("Enter 6-digit order number")
+        self._order_input.setObjectName("orderInput")
+        self._order_input.setPlaceholderText("Enter 6-digit number")
         self._order_input.setMaxLength(6)
         self._order_input.setValidator(QRegularExpressionValidator(QRegularExpression(r"^\d{0,6}$")))
         self._order_input.returnPressed.connect(self._search_order)
-        self._order_input.setStyleSheet(f"""
-            QLineEdit {{
-                font-size: {FONT_SIZE['xxl']}pt;
-                font-weight: bold;
-                padding: {FONT_SIZE['lg']}px {FONT_SIZE['xl']}px;
-                background-color: {COLORS['surface']};
-                border: 2px solid {COLORS['border']};
-                border-radius: 8px;
-            }}
-            QLineEdit:focus {{
-                border-color: {COLORS['accent']};
-            }}
-        """)
         self._order_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._order_input.setMaximumWidth(300)  # Constrain width
         self._order_input.setMinimumWidth(200)  # Ensure minimum usable width
@@ -117,6 +110,22 @@ class MainWindow(QMainWindow):
         lookup_card.add_layout(lookup_layout)
         layout.addWidget(lookup_card)
 
+        # Middle container (holds everything between Order Lookup and buttons)
+        self._middle_container = QWidget()
+        middle_layout = QVBoxLayout(self._middle_container)
+        middle_layout.setContentsMargins(0, 0, 0, 0)
+        middle_layout.setSpacing(SPACING["md"])
+
+        # Splitter for wide mode (left panel | LOG card)
+        self._splitter = QSplitter(Qt.Orientation.Horizontal)
+        self._splitter.setChildrenCollapsible(False)
+
+        # Left panel (Certifications + Upload Progress)
+        self._left_panel = QWidget()
+        left_layout = QVBoxLayout(self._left_panel)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(SPACING["md"])
+
         # Certifications Card
         self._certs_card = Card(title="CERTIFICATIONS", icon=get_icon("certificate"))
 
@@ -135,34 +144,55 @@ class MainWindow(QMainWindow):
 
         # Warning label (hidden by default)
         self._warning_label = QLabel()
-        self._warning_label.setStyleSheet(f"""
-            QLabel {{
-                color: {COLORS['warning']};
-                background-color: rgba(251, 191, 36, 0.15);
-                padding: 12px;
-                border-radius: 8px;
-                border: 1px solid rgba(251, 191, 36, 0.3);
-            }}
-        """)
+        self._warning_label.setObjectName("warningLabel")
         self._warning_label.setWordWrap(True)
         self._warning_label.setMinimumHeight(50)  # Reserve space to prevent layout shift
         self._warning_label.setVisible(False)
         self._certs_card.add_widget(self._warning_label)
 
-        layout.addWidget(self._certs_card, stretch=1)
+        left_layout.addWidget(self._certs_card, stretch=1)
 
         # Upload Progress Card
-        progress_card = Card(title="UPLOAD PROGRESS", icon=get_icon("upload"))
+        self._progress_card = Card(title="UPLOAD PROGRESS", icon=get_icon("upload"))
         self._progress_widget = UploadProgressWidget()
-        progress_card.add_widget(self._progress_widget)
-        layout.addWidget(progress_card)
+        self._progress_card.add_widget(self._progress_widget)
+        left_layout.addWidget(self._progress_card)
 
-        # Log Card (collapsible, starts collapsed)
+        self._splitter.addWidget(self._left_panel)
+
+        # Log Card (collapsible, starts collapsed) with tabs
         self._log_card = Card(title="LOG", icon=get_icon("log"), collapsible=True, collapsed=True)
+
+        # Tab widget for Current/History
+        self._log_tabs = QTabWidget()
+        self._log_tabs.setObjectName("logTabs")
+
+        # Current log tab
         self._log = LogViewer()
         self._log.setMinimumHeight(100)
-        self._log_card.add_widget(self._log)
-        layout.addWidget(self._log_card)
+        self._log_tabs.addTab(self._log, "Current")
+
+        # History tab
+        self._history_viewer = HistoryViewer()
+        self._history_viewer.setMinimumHeight(150)
+        self._log_tabs.addTab(self._history_viewer, "History")
+
+        self._log_card.add_widget(self._log_tabs)
+
+        # Narrow layout container for LOG card (used in narrow mode)
+        self._narrow_log_container = QWidget()
+        narrow_log_layout = QVBoxLayout(self._narrow_log_container)
+        narrow_log_layout.setContentsMargins(0, 0, 0, 0)
+        narrow_log_layout.setSpacing(0)
+        narrow_log_layout.addWidget(self._log_card)
+
+        # Add splitter and narrow container to middle layout
+        middle_layout.addWidget(self._splitter, stretch=1)
+        middle_layout.addWidget(self._narrow_log_container)
+
+        # Start in narrow mode (LOG in narrow container, splitter shows only left panel)
+
+        layout.addWidget(self._middle_container, stretch=1)
 
         # Button row
         button_layout = QHBoxLayout()
@@ -368,6 +398,7 @@ class MainWindow(QMainWindow):
             certifications=selected,
             root_folder_id=self._customer.cst_integration_id,
             media_base_path=Path(media_base),
+            customer_name=self._customer.cst_name,
         )
         self._upload_worker.progress.connect(self._on_upload_progress)
         self._upload_worker.file_completed.connect(self._on_file_completed)
@@ -411,6 +442,9 @@ class MainWindow(QMainWindow):
         self._log.log(f"Successful: {success_count}", timestamp=False)
         self._log.log(f"Failed: {failed_count}", timestamp=False)
 
+        # Refresh history viewer to show new uploads
+        self._history_viewer.refresh()
+
         self._update_ui_state()
 
         # Clear and refocus for rapid data entry workflow
@@ -429,3 +463,33 @@ class MainWindow(QMainWindow):
         self._log_card.expand()
         self._progress_widget.set_error(message)
         self._update_ui_state()
+
+    def resizeEvent(self, event) -> None:
+        """Handle window resize to switch between narrow and wide layouts."""
+        super().resizeEvent(event)
+        width = event.size().width()
+        should_be_wide = width >= WIDE_LAYOUT_THRESHOLD
+
+        if should_be_wide and not self._is_wide_layout:
+            self._switch_to_wide_layout()
+        elif not should_be_wide and self._is_wide_layout:
+            self._switch_to_narrow_layout()
+
+    def _switch_to_wide_layout(self) -> None:
+        """Move LOG card to side panel (splitter)."""
+        self._log_card.setParent(None)
+        self._splitter.addWidget(self._log_card)
+        self._splitter.setSizes([500, 500])  # Default 50/50 split
+        self._narrow_log_container.setVisible(False)
+        # Force expand and disable collapse in wide mode
+        self._log_card.set_collapsible(False)
+        self._is_wide_layout = True
+
+    def _switch_to_narrow_layout(self) -> None:
+        """Move LOG card below Upload Progress."""
+        self._log_card.setParent(None)
+        self._narrow_log_container.layout().addWidget(self._log_card)
+        self._narrow_log_container.setVisible(True)
+        # Re-enable collapse in narrow mode
+        self._log_card.set_collapsible(True)
+        self._is_wide_layout = False
