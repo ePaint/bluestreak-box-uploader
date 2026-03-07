@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -11,6 +12,7 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QLineEdit,
     QSpinBox,
+    QSlider,
     QComboBox,
     QPushButton,
     QFileDialog,
@@ -19,9 +21,11 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
 )
 
+from PySide6.QtWidgets import QApplication
+
 from settings import load_settings, save_settings
 from database.connection import DatabaseConfig, check_connection
-from gui.theme import COLORS, SPACING, RADIUS, get_icon
+from gui.theme import COLORS, SPACING, RADIUS, FONT_SIZE, get_icon
 
 
 class SettingsDialog(QDialog):
@@ -43,6 +47,11 @@ class SettingsDialog(QDialog):
         # Tab widget
         self._tabs = QTabWidget()
         layout.addWidget(self._tabs)
+
+        # General tab (first)
+        self._general_tab = QWidget()
+        self._setup_general_tab()
+        self._tabs.addTab(self._general_tab, get_icon("settings"), "General")
 
         # Database tab
         self._db_tab = QWidget()
@@ -80,13 +89,49 @@ class SettingsDialog(QDialog):
         label.setStyleSheet(f"""
             QLabel {{
                 color: {COLORS['text_secondary']};
-                font-size: 9pt;
+                font-size: {FONT_SIZE['xs']}pt;
                 padding: 8px;
                 background-color: {COLORS['background']};
                 border-radius: {RADIUS['sm']}px;
             }}
         """)
         return label
+
+    def _setup_general_tab(self) -> None:
+        layout = QFormLayout(self._general_tab)
+        layout.setSpacing(SPACING["sm"])
+        layout.setContentsMargins(SPACING["md"], SPACING["md"], SPACING["md"], SPACING["md"])
+
+        # Theme selection
+        self._theme_combo = QComboBox()
+        self._theme_combo.addItems(["dark", "light"])
+        self._theme_combo.setToolTip("Application color theme (requires restart)")
+        layout.addRow("Theme:", self._theme_combo)
+
+        # Font size slider
+        font_size_layout = QHBoxLayout()
+        font_size_layout.setSpacing(SPACING["sm"])
+
+        self._font_size_slider = QSlider(Qt.Orientation.Horizontal)
+        self._font_size_slider.setRange(8, 16)
+        self._font_size_slider.setValue(10)
+        self._font_size_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self._font_size_slider.setTickInterval(1)
+        self._font_size_slider.setToolTip("Base font size for the application (requires restart)")
+        self._font_size_slider.valueChanged.connect(self._on_font_size_changed)
+        font_size_layout.addWidget(self._font_size_slider)
+
+        self._font_size_label = QLabel("10 pt")
+        self._font_size_label.setMinimumWidth(40)
+        font_size_layout.addWidget(self._font_size_label)
+
+        layout.addRow("Font Size:", font_size_layout)
+
+        # Help text
+        help_label = self._create_help_label(
+            "Theme and font size changes require restarting the application to take effect."
+        )
+        layout.addRow("", help_label)
 
     def _setup_db_tab(self) -> None:
         layout = QFormLayout(self._db_tab)
@@ -206,6 +251,13 @@ class SettingsDialog(QDialog):
         """Load settings into form fields."""
         settings = load_settings()
 
+        # General tab
+        self._theme_combo.setCurrentText(settings.get("theme", "dark"))
+        font_size = settings.get("font_size", 10)
+        self._font_size_slider.setValue(font_size)
+        self._font_size_label.setText(f"{font_size} pt")
+
+        # Database tab
         self._db_driver.setCurrentText(settings.get("db_driver", "sqlserver"))
         self._db_host.setText(settings.get("db_host", ""))
         self._db_port.setValue(settings.get("db_port", 1433))
@@ -225,6 +277,11 @@ class SettingsDialog(QDialog):
         """Save form fields to settings."""
         settings = load_settings()
 
+        # General tab
+        settings["theme"] = self._theme_combo.currentText()
+        settings["font_size"] = self._font_size_slider.value()
+
+        # Database tab
         settings["db_driver"] = self._db_driver.currentText()
         settings["db_host"] = self._db_host.text()
         settings["db_port"] = self._db_port.value()
@@ -242,8 +299,29 @@ class SettingsDialog(QDialog):
 
     def _save_and_close(self) -> None:
         """Save settings and close dialog."""
+        # Check if theme or font changed
+        old_settings = load_settings()
+        old_theme = old_settings.get("theme", "dark")
+        old_font = old_settings.get("font_size", 10)
+
+        new_theme = self._theme_combo.currentText()
+        new_font = self._font_size_slider.value()
+
         self._save_settings()
+
+        # Notify user if theme/font changed (requires restart for full effect)
+        if old_theme != new_theme or old_font != new_font:
+            QMessageBox.information(
+                self,
+                "Restart Required",
+                "Theme and font changes will take full effect after restarting the application.",
+            )
+
         self.accept()
+
+    def _on_font_size_changed(self, value: int) -> None:
+        """Update font size label when slider changes."""
+        self._font_size_label.setText(f"{value} pt")
 
     def _on_driver_changed(self, driver: str) -> None:
         """Enable/disable fields based on driver selection."""

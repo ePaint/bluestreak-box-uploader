@@ -2,7 +2,9 @@
 
 from pathlib import Path
 
-from PySide6.QtGui import QAction, QIcon, QKeySequence
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QAction, QIcon, QKeySequence, QRegularExpressionValidator
+from PySide6.QtCore import QRegularExpression
 from PySide6.QtWidgets import (
     QMainWindow,
     QWidget,
@@ -22,7 +24,7 @@ from gui.widgets import CertificationTable, LogViewer, UploadProgressWidget
 from gui.widgets.card import Card
 from gui.settings_dialog import SettingsDialog
 from gui.workers import QueryWorker, PartialQueryWorker, UploadWorker
-from gui.theme import COLORS, SPACING, get_icon
+from gui.theme import COLORS, SPACING, FONT_SIZE, get_icon
 
 
 class MainWindow(QMainWindow):
@@ -44,7 +46,7 @@ class MainWindow(QMainWindow):
 
         self._setup_menu()
         self._setup_ui()
-        self._load_last_order()
+        # Don't load last order on startup - start with empty search field
         self._update_ui_state()
 
     def _setup_menu(self) -> None:
@@ -77,14 +79,40 @@ class MainWindow(QMainWindow):
         lookup_layout.setSpacing(SPACING["sm"])
 
         self._order_input = QLineEdit()
-        self._order_input.setPlaceholderText("Search order ID (min 3 chars, e.g., 443)")
+        self._order_input.setPlaceholderText("Enter 6-digit order number")
+        self._order_input.setMaxLength(6)
+        self._order_input.setValidator(QRegularExpressionValidator(QRegularExpression(r"^\d{0,6}$")))
         self._order_input.returnPressed.connect(self._search_order)
-        lookup_layout.addWidget(self._order_input, stretch=1)
+        self._order_input.setStyleSheet(f"""
+            QLineEdit {{
+                font-size: {FONT_SIZE['xxl']}pt;
+                font-weight: bold;
+                padding: {FONT_SIZE['lg']}px {FONT_SIZE['xl']}px;
+                background-color: {COLORS['surface']};
+                border: 2px solid {COLORS['border']};
+                border-radius: 8px;
+            }}
+            QLineEdit:focus {{
+                border-color: {COLORS['accent']};
+            }}
+        """)
+        self._order_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._order_input.setMaximumWidth(300)  # Constrain width
+        self._order_input.setMinimumWidth(200)  # Ensure minimum usable width
+        # Select all text on focus for easy replacement
+        self._order_input.focusInEvent = lambda e: (
+            QLineEdit.focusInEvent(self._order_input, e),
+            self._order_input.selectAll(),
+        )
+        lookup_layout.addWidget(self._order_input, stretch=0)
 
         self._search_btn = QPushButton("Search")
         self._search_btn.setProperty("primary", True)
+        self._search_btn.setMaximumWidth(120)  # Constrain button width too
         self._search_btn.clicked.connect(self._search_order)
-        lookup_layout.addWidget(self._search_btn)
+        lookup_layout.addWidget(self._search_btn, stretch=0)
+
+        lookup_layout.addStretch()  # Push elements to the left
 
         lookup_card.add_layout(lookup_layout)
         layout.addWidget(lookup_card)
@@ -129,12 +157,12 @@ class MainWindow(QMainWindow):
         progress_card.add_widget(self._progress_widget)
         layout.addWidget(progress_card)
 
-        # Log Card
-        log_card = Card(title="LOG", icon=get_icon("log"))
+        # Log Card (collapsible, starts collapsed)
+        self._log_card = Card(title="LOG", icon=get_icon("log"), collapsible=True, collapsed=True)
         self._log = LogViewer()
         self._log.setMinimumHeight(100)
-        log_card.add_widget(self._log)
-        layout.addWidget(log_card)
+        self._log_card.add_widget(self._log)
+        layout.addWidget(self._log_card)
 
         # Button row
         button_layout = QHBoxLayout()
@@ -206,14 +234,14 @@ class MainWindow(QMainWindow):
         save_settings(settings)
 
     def _search_order(self) -> None:
-        """Search for certifications by partial order ID (minimum 3 characters)."""
+        """Search for certifications by order ID (must be exactly 6 digits)."""
         search_text = self._order_input.text().strip()
         if not search_text:
             self._log.log_warning("Please enter an Order ID.")
             return
 
-        if len(search_text) < 3:
-            self._log.log_warning("Please enter at least 3 characters to search.")
+        if not search_text.isdigit() or len(search_text) != 6:
+            self._log.log_warning("Order ID must be exactly 6 digits.")
             return
 
         # Save last search
@@ -282,6 +310,7 @@ class MainWindow(QMainWindow):
         """Handle query error."""
         self._query_worker = None
         self._log.log_error(message)
+        self._log_card.expand()
         self._update_ui_state()
 
     def _start_upload(self) -> None:
@@ -325,9 +354,12 @@ class MainWindow(QMainWindow):
                 self._show_settings()
             return
 
-        # Calculate totals
+        # Calculate totals and build cert info string
         total_files = sum(len(c.media_files) for c in selected)
-        self._progress_widget.set_total(total_files)
+        cert_names = ", ".join(c.crt_cert_no for c in selected)
+        if len(cert_names) > 50:
+            cert_names = cert_names[:47] + "..."
+        self._progress_widget.set_total(total_files, cert_info=cert_names)
         self._log.log(f"Starting upload of {total_files} file(s) from {len(selected)} certification(s)...")
 
         # Start upload worker
@@ -362,6 +394,7 @@ class MainWindow(QMainWindow):
             self._log.log_success(f"Uploaded: {filename}")
         else:
             self._log.log_error(f"Failed: {filename} - {job.error_message}")
+            self._log_card.expand()
 
     def _on_upload_finished(self, success_count: int, failed_count: int) -> None:
         """Handle upload completion."""
@@ -380,11 +413,10 @@ class MainWindow(QMainWindow):
 
         self._update_ui_state()
 
-        QMessageBox.information(
-            self,
-            "Upload Complete",
-            f"Successfully uploaded {success_count} of {total} files.",
-        )
+        # Clear and refocus for rapid data entry workflow
+        self._order_input.clear()
+        self._order_input.setFocus()
+        self._cert_table.clear()
 
     def _on_upload_error(self, message: str) -> None:
         """Handle upload error."""
@@ -394,5 +426,6 @@ class MainWindow(QMainWindow):
             self._upload_worker.deleteLater()
             self._upload_worker = None
         self._log.log_error(message)
+        self._log_card.expand()
         self._progress_widget.set_error(message)
         self._update_ui_state()

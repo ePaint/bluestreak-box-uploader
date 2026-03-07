@@ -9,8 +9,8 @@ from PySide6.QtGui import QIcon
 ASSETS_DIR = Path(__file__).parent / "assets"
 
 
-# Color palette
-COLORS = {
+# Color palettes
+COLORS_DARK = {
     "background": "#1e1e2e",       # Dark blue-gray
     "surface": "#2a2a3c",          # Card background
     "surface_hover": "#32324a",    # Card hover
@@ -26,6 +26,26 @@ COLORS = {
     "warning": "#fbbf24",          # Yellow
     "table_alt": "#252535",        # Alternating row
 }
+
+COLORS_LIGHT = {
+    "background": "#f5f5f7",       # Light gray
+    "surface": "#ffffff",          # White card background
+    "surface_hover": "#e8e8ed",    # Card hover
+    "border": "#d1d1d6",           # Subtle borders
+    "text": "#1d1d1f",             # Primary text (dark)
+    "text_secondary": "#6e6e73",   # Secondary text
+    "accent": "#0071e3",           # Blue accent
+    "accent_hover": "#0077ed",     # Blue hover
+    "accent_pressed": "#005bb5",   # Blue pressed
+    "selection": "#b3d7ff",        # Light blue for row selection
+    "success": "#28a745",          # Green
+    "error": "#dc3545",            # Red
+    "warning": "#f5a623",          # Yellow/orange
+    "table_alt": "#f0f0f5",        # Alternating row
+}
+
+# Default to dark theme (will be set by app.py based on settings)
+COLORS = COLORS_DARK.copy()
 
 # Spacing constants
 SPACING = {
@@ -43,13 +63,49 @@ RADIUS = {
     "lg": 12,
 }
 
-# Font sizes
-FONT_SIZE = {
-    "sm": 9,
-    "md": 10,
-    "lg": 12,
-    "xl": 14,
+# Base font sizes (will be scaled by font_size setting)
+FONT_SIZE_BASE = {
+    "xs": 8,   # Help text
+    "sm": 9,   # Small labels
+    "md": 10,  # Default text
+    "lg": 12,  # Card titles
+    "xl": 14,  # Emphasized text
+    "xxl": 18, # Order input (large)
 }
+
+# Current font sizes (updated by set_font_scale)
+FONT_SIZE = FONT_SIZE_BASE.copy()
+
+
+def set_theme(theme: str) -> None:
+    """Set the active color theme.
+
+    Args:
+        theme: 'dark' or 'light'
+    """
+    global COLORS
+    if theme == "light":
+        COLORS.clear()
+        COLORS.update(COLORS_LIGHT)
+    else:
+        COLORS.clear()
+        COLORS.update(COLORS_DARK)
+
+
+def set_font_scale(base_size: int) -> None:
+    """Set the font scale based on a base size.
+
+    Args:
+        base_size: Base font size (default 10, range 8-16)
+    """
+    global FONT_SIZE
+    scale = base_size / 10.0
+    FONT_SIZE["xs"] = int(FONT_SIZE_BASE["xs"] * scale)
+    FONT_SIZE["sm"] = int(FONT_SIZE_BASE["sm"] * scale)
+    FONT_SIZE["md"] = int(FONT_SIZE_BASE["md"] * scale)
+    FONT_SIZE["lg"] = int(FONT_SIZE_BASE["lg"] * scale)
+    FONT_SIZE["xl"] = int(FONT_SIZE_BASE["xl"] * scale)
+    FONT_SIZE["xxl"] = int(FONT_SIZE_BASE["xxl"] * scale)
 
 
 def get_stylesheet() -> str:
@@ -74,6 +130,7 @@ def get_stylesheet() -> str:
 
         QMenuBar::item {{
             padding: 6px 12px;
+            font-size: {FONT_SIZE['md']}pt;
             border-radius: {RADIUS['sm']}px;
         }}
 
@@ -91,6 +148,7 @@ def get_stylesheet() -> str:
 
         QMenu::item {{
             padding: 8px 24px;
+            font-size: {FONT_SIZE['md']}pt;
             border-radius: {RADIUS['sm']}px;
         }}
 
@@ -105,9 +163,9 @@ def get_stylesheet() -> str:
             color: {COLORS['text']};
             border: 1px solid {COLORS['border']};
             border-radius: {RADIUS['md']}px;
-            padding: 8px 16px;
+            padding: {FONT_SIZE['sm']}px {FONT_SIZE['xl']}px;
+            font-size: {FONT_SIZE['md']}pt;
             font-weight: 500;
-            min-height: 14px;
         }}
 
         QPushButton:hover {{
@@ -155,6 +213,7 @@ def get_stylesheet() -> str:
             border: 1px solid {COLORS['border']};
             border-radius: {RADIUS['md']}px;
             padding: 8px 12px;
+            font-size: {FONT_SIZE['md']}pt;
             selection-background-color: {COLORS['accent']};
         }}
 
@@ -170,6 +229,7 @@ def get_stylesheet() -> str:
         /* Checkboxes */
         QCheckBox {{
             color: {COLORS['text']};
+            font-size: {FONT_SIZE['md']}pt;
             spacing: 8px;
         }}
 
@@ -280,7 +340,8 @@ def get_stylesheet() -> str:
             border-radius: {RADIUS['md']}px;
             text-align: center;
             color: {COLORS['text']};
-            min-height: 24px;
+            font-size: {FONT_SIZE['md']}pt;
+            padding: {FONT_SIZE['xs']}px;
         }}
 
         QProgressBar::chunk {{
@@ -302,6 +363,7 @@ def get_stylesheet() -> str:
             border: none;
             padding: 10px 20px;
             margin-right: 4px;
+            font-size: {FONT_SIZE['md']}pt;
             border-top-left-radius: {RADIUS['md']}px;
             border-top-right-radius: {RADIUS['md']}px;
         }}
@@ -316,13 +378,14 @@ def get_stylesheet() -> str:
             color: {COLORS['text']};
         }}
 
-        /* Spin box */
+        /* Spin box - styled like text input, no arrows */
         QSpinBox {{
             background-color: {COLORS['surface']};
             color: {COLORS['text']};
             border: 1px solid {COLORS['border']};
             border-radius: {RADIUS['md']}px;
             padding: 6px 12px;
+            font-size: {FONT_SIZE['md']}pt;
         }}
 
         QSpinBox:focus {{
@@ -330,9 +393,8 @@ def get_stylesheet() -> str:
         }}
 
         QSpinBox::up-button, QSpinBox::down-button {{
-            background-color: {COLORS['surface_hover']};
+            width: 0;
             border: none;
-            width: 20px;
         }}
 
         /* Combo box */
@@ -342,6 +404,7 @@ def get_stylesheet() -> str:
             border: 1px solid {COLORS['border']};
             border-radius: {RADIUS['md']}px;
             padding: 6px 12px;
+            font-size: {FONT_SIZE['md']}pt;
             min-height: 20px;
         }}
 
@@ -362,9 +425,34 @@ def get_stylesheet() -> str:
             selection-color: #000000;
         }}
 
+        /* Slider */
+        QSlider::groove:horizontal {{
+            background-color: {COLORS['border']};
+            height: 6px;
+            border-radius: 3px;
+        }}
+
+        QSlider::handle:horizontal {{
+            background-color: {COLORS['accent']};
+            width: 16px;
+            height: 16px;
+            margin: -5px 0;
+            border-radius: 8px;
+        }}
+
+        QSlider::handle:horizontal:hover {{
+            background-color: {COLORS['accent_hover']};
+        }}
+
+        QSlider::sub-page:horizontal {{
+            background-color: {COLORS['accent']};
+            border-radius: 3px;
+        }}
+
         /* Labels */
         QLabel {{
             color: {COLORS['text']};
+            font-size: {FONT_SIZE['md']}pt;
         }}
 
         /* Dialog button box */

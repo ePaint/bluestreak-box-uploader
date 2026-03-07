@@ -4,7 +4,7 @@ from datetime import datetime
 
 from PySide6.QtWidgets import QTextEdit
 
-from gui.theme import COLORS, RADIUS
+from gui.theme import COLORS, RADIUS, FONT_SIZE
 
 
 class LogViewer(QTextEdit):
@@ -20,7 +20,7 @@ class LogViewer(QTextEdit):
                 border: 1px solid {COLORS['border']};
                 border-radius: {RADIUS['md']}px;
                 font-family: 'Cascadia Code', 'Consolas', 'Monaco', monospace;
-                font-size: 10pt;
+                font-size: {FONT_SIZE['md']}pt;
                 padding: 8px;
                 selection-background-color: {COLORS['accent']};
                 selection-color: #000000;

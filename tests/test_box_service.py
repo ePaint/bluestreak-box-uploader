@@ -88,10 +88,10 @@ class TestFolderManager:
         manager = FolderManager(mock_client)
 
         # Pre-populate cache to avoid API calls
-        manager._cache["root"] = {"444337 (PO#TEST)": "order123"}
-        manager._cache["order123"] = {"444337-1": "cert123"}
+        manager._cache["root"] = {"PO#TEST (BII WO#444337)": "order123"}
+        manager._cache["order123"] = {"Cert#444337-1": "cert123"}
 
-        result = manager.ensure_folder_path("root", "444337 (PO#TEST)/444337-1")
+        result = manager.ensure_folder_path("root", "PO#TEST (BII WO#444337)/Cert#444337-1")
 
         assert result == "cert123"
 
@@ -115,10 +115,13 @@ class TestFolderPath:
         po_number = "TEST123"
         cert_no = "444337-1"
 
-        po_part = f" (PO#{po_number})" if po_number else ""
-        path = f"{order_id}{po_part}/{cert_no}"
+        if po_number:
+            parent_folder = f"PO#{po_number} (BII WO#{order_id})"
+        else:
+            parent_folder = f"BII WO#{order_id}"
+        path = f"{parent_folder}/Cert#{cert_no}"
 
-        assert path == "444337 (PO#TEST123)/444337-1"
+        assert path == "PO#TEST123 (BII WO#444337)/Cert#444337-1"
 
     def test_folder_path_without_po(self):
         """Test folder path construction without PO number."""
@@ -126,7 +129,10 @@ class TestFolderPath:
         po_number = None
         cert_no = "444337-1"
 
-        po_part = f" (PO#{po_number})" if po_number else ""
-        path = f"{order_id}{po_part}/{cert_no}"
+        if po_number:
+            parent_folder = f"PO#{po_number} (BII WO#{order_id})"
+        else:
+            parent_folder = f"BII WO#{order_id}"
+        path = f"{parent_folder}/Cert#{cert_no}"
 
-        assert path == "444337/444337-1"
+        assert path == "BII WO#444337/Cert#444337-1"

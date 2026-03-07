@@ -96,7 +96,7 @@ class FolderManager:
 
         Args:
             root_id: The root folder ID to start from
-            path: Path like "444337 (PO#TEST123)/444337-1"
+            path: Path like "PO#TEST123 (BII WO#444337)/Cert#444337-1"
 
         Returns:
             The folder ID of the final folder in the path

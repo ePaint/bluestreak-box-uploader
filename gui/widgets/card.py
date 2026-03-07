@@ -1,6 +1,6 @@
 """Reusable card widget with rounded corners and shadow effect."""
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QFrame,
     QVBoxLayout,
@@ -8,14 +8,17 @@ from PySide6.QtWidgets import (
     QLabel,
     QWidget,
     QGraphicsDropShadowEffect,
+    QPushButton,
 )
 from PySide6.QtGui import QColor, QIcon
 
-from gui.theme import COLORS, SPACING, RADIUS
+from gui.theme import COLORS, SPACING, RADIUS, FONT_SIZE
 
 
 class Card(QFrame):
     """Modern card container with rounded corners and optional header."""
+
+    collapsed_changed = Signal(bool)  # Emitted when collapse state changes
 
     def __init__(
         self,
@@ -23,13 +26,19 @@ class Card(QFrame):
         icon: QIcon | None = None,
         parent: QWidget | None = None,
         hover_effect: bool = False,
+        collapsible: bool = False,
+        collapsed: bool = False,
     ):
         super().__init__(parent)
         self._title = title
         self._icon = icon
         self._hover_effect = hover_effect
+        self._collapsible = collapsible
+        self._collapsed = collapsed
         self._setup_ui()
         self._apply_style()
+        if collapsible and collapsed:
+            self._content_widget.setVisible(False)
 
     def _setup_ui(self) -> None:
         """Set up the card layout."""
@@ -59,7 +68,7 @@ class Card(QFrame):
             self._title_label.setStyleSheet(f"""
                 QLabel {{
                     color: {COLORS['text']};
-                    font-size: 12px;
+                    font-size: {FONT_SIZE['lg']}pt;
                     font-weight: bold;
                     letter-spacing: 0.5px;
                 }}
@@ -71,7 +80,7 @@ class Card(QFrame):
             self._badge_label.setStyleSheet(f"""
                 QLabel {{
                     color: {COLORS['text_secondary']};
-                    font-size: 11px;
+                    font-size: {FONT_SIZE['md']}pt;
                     background-color: {COLORS['background']};
                     padding: 4px 8px;
                     border-radius: {RADIUS['sm']}px;
@@ -80,6 +89,24 @@ class Card(QFrame):
             self._badge_label.hide()
             header_layout.addStretch()
             header_layout.addWidget(self._badge_label)
+
+            # Collapse button (if collapsible)
+            if self._collapsible:
+                self._collapse_btn = QPushButton("▼" if not self._collapsed else "▶")
+                self._collapse_btn.setFixedSize(24, 24)
+                self._collapse_btn.setStyleSheet(f"""
+                    QPushButton {{
+                        background-color: transparent;
+                        border: none;
+                        color: {COLORS['text_secondary']};
+                        font-size: {FONT_SIZE['sm']}pt;
+                    }}
+                    QPushButton:hover {{
+                        color: {COLORS['accent']};
+                    }}
+                """)
+                self._collapse_btn.clicked.connect(self._toggle_collapse)
+                header_layout.addWidget(self._collapse_btn)
 
             self._main_layout.addWidget(self._header)
 
@@ -133,7 +160,7 @@ class Card(QFrame):
             self._badge_label.setStyleSheet(f"""
                 QLabel {{
                     color: {COLORS['text']};
-                    font-size: 11px;
+                    font-size: {FONT_SIZE['md']}pt;
                     background-color: {color};
                     padding: 4px 8px;
                     border-radius: {RADIUS['sm']}px;
@@ -155,3 +182,25 @@ class Card(QFrame):
     def add_stretch(self) -> None:
         """Add stretch to the content layout."""
         self._content_layout.addStretch()
+
+    def _toggle_collapse(self) -> None:
+        """Toggle the collapse state."""
+        self._collapsed = not self._collapsed
+        self._content_widget.setVisible(not self._collapsed)
+        if hasattr(self, "_collapse_btn"):
+            self._collapse_btn.setText("▶" if self._collapsed else "▼")
+        self.collapsed_changed.emit(self._collapsed)
+
+    def is_collapsed(self) -> bool:
+        """Return whether the card is collapsed."""
+        return self._collapsed
+
+    def set_collapsed(self, collapsed: bool) -> None:
+        """Set the collapse state."""
+        if self._collapsible and self._collapsed != collapsed:
+            self._toggle_collapse()
+
+    def expand(self) -> None:
+        """Expand the card if it's collapsible and collapsed."""
+        if self._collapsible and self._collapsed:
+            self._toggle_collapse()

@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QProgressBar,
 )
 
-from gui.theme import COLORS, SPACING, RADIUS
+from gui.theme import COLORS, SPACING, RADIUS, FONT_SIZE
 
 
 class UploadProgressWidget(QWidget):
@@ -16,6 +16,7 @@ class UploadProgressWidget(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._cert_info = ""  # Track which certs are being uploaded
         self._setup_ui()
 
     def _setup_ui(self) -> None:
@@ -31,7 +32,7 @@ class UploadProgressWidget(QWidget):
         self._status_label.setStyleSheet(f"""
             QLabel {{
                 color: {COLORS['text']};
-                font-size: 11pt;
+                font-size: {FONT_SIZE['md']}pt;
             }}
         """)
         status_layout.addWidget(self._status_label)
@@ -42,7 +43,7 @@ class UploadProgressWidget(QWidget):
         self._count_label.setStyleSheet(f"""
             QLabel {{
                 color: {COLORS['text_secondary']};
-                font-size: 10pt;
+                font-size: {FONT_SIZE['sm']}pt;
             }}
         """)
         status_layout.addWidget(self._count_label)
@@ -53,7 +54,6 @@ class UploadProgressWidget(QWidget):
         self._progress_bar = QProgressBar()
         self._progress_bar.setValue(0)
         self._progress_bar.setTextVisible(True)
-        self._progress_bar.setMinimumHeight(28)
         self._progress_bar.setStyleSheet(f"""
             QProgressBar {{
                 background-color: {COLORS['background']};
@@ -61,7 +61,9 @@ class UploadProgressWidget(QWidget):
                 border-radius: {RADIUS['md']}px;
                 text-align: center;
                 color: {COLORS['text']};
+                font-size: {FONT_SIZE['md']}pt;
                 font-weight: bold;
+                padding: {FONT_SIZE['xs']}px;
             }}
             QProgressBar::chunk {{
                 background: qlineargradient(
@@ -74,19 +76,27 @@ class UploadProgressWidget(QWidget):
         """)
         layout.addWidget(self._progress_bar)
 
-    def set_total(self, total: int) -> None:
-        """Set the total number of files."""
+    def set_total(self, total: int, cert_info: str = "") -> None:
+        """Set the total number of files and optional cert info."""
+        self._cert_info = cert_info
         self._progress_bar.setMaximum(total)
         self._progress_bar.setValue(0)
         self._count_label.setText(f"0 / {total}")
-        self._status_label.setText("Starting...")
+        if cert_info:
+            self._status_label.setText(f"Uploading: {cert_info}")
+        else:
+            self._status_label.setText("Starting...")
         self._reset_status_style()
 
     def update_progress(self, current: int, total: int, filename: str) -> None:
         """Update progress display."""
         self._progress_bar.setMaximum(total)
         self._progress_bar.setValue(current)
-        self._status_label.setText(f"Uploading: {filename}")
+        # Show cert info with filename if available
+        if self._cert_info:
+            self._status_label.setText(f"Uploading ({self._cert_info}): {filename}")
+        else:
+            self._status_label.setText(f"Uploading: {filename}")
         self._count_label.setText(f"{current} / {total}")
         self._reset_status_style()
 
@@ -97,7 +107,7 @@ class UploadProgressWidget(QWidget):
         self._status_label.setStyleSheet(f"""
             QLabel {{
                 color: {COLORS['success']};
-                font-size: 11pt;
+                font-size: {FONT_SIZE['md']}pt;
                 font-weight: bold;
             }}
         """)
@@ -111,7 +121,9 @@ class UploadProgressWidget(QWidget):
                 border-radius: {RADIUS['md']}px;
                 text-align: center;
                 color: {COLORS['text']};
+                font-size: {FONT_SIZE['md']}pt;
                 font-weight: bold;
+                padding: {FONT_SIZE['xs']}px;
             }}
             QProgressBar::chunk {{
                 background-color: {COLORS['success']};
@@ -125,7 +137,7 @@ class UploadProgressWidget(QWidget):
         self._status_label.setStyleSheet(f"""
             QLabel {{
                 color: {COLORS['error']};
-                font-size: 11pt;
+                font-size: {FONT_SIZE['md']}pt;
                 font-weight: bold;
             }}
         """)
@@ -138,7 +150,9 @@ class UploadProgressWidget(QWidget):
                 border-radius: {RADIUS['md']}px;
                 text-align: center;
                 color: {COLORS['text']};
+                font-size: {FONT_SIZE['md']}pt;
                 font-weight: bold;
+                padding: {FONT_SIZE['xs']}px;
             }}
             QProgressBar::chunk {{
                 background-color: {COLORS['error']};
@@ -148,6 +162,7 @@ class UploadProgressWidget(QWidget):
 
     def reset(self) -> None:
         """Reset to initial state."""
+        self._cert_info = ""
         self._progress_bar.setValue(0)
         self._progress_bar.setMaximum(100)
         self._status_label.setText("Ready")
@@ -160,7 +175,7 @@ class UploadProgressWidget(QWidget):
         self._status_label.setStyleSheet(f"""
             QLabel {{
                 color: {COLORS['text']};
-                font-size: 11pt;
+                font-size: {FONT_SIZE['md']}pt;
             }}
         """)
 
@@ -173,7 +188,9 @@ class UploadProgressWidget(QWidget):
                 border-radius: {RADIUS['md']}px;
                 text-align: center;
                 color: {COLORS['text']};
+                font-size: {FONT_SIZE['md']}pt;
                 font-weight: bold;
+                padding: {FONT_SIZE['xs']}px;
             }}
             QProgressBar::chunk {{
                 background: qlineargradient(

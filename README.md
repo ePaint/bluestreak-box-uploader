@@ -6,7 +6,7 @@ Upload Bluestreak MES/QMS certifications to Box.com for customer sharing.
 
 - Query certifications by Order ID (partial search, minimum 3 characters)
 - Select and upload certification documents to Box.com
-- Automatic Box folder structure creation: `[OrderID] (PO#[PONumber])/[CertNo]/`
+- Automatic Box folder structure creation: `PO#[PONumber] (BII WO#[OrderID])/Cert#[CertNo]/`
 - JWT authentication with Box.com
 - Progress tracking with detailed logging
 - Auto-upload option when single certification is found
