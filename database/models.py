@@ -1,6 +1,7 @@
 """Data models for Bluestreak Box Uploader."""
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
 
 
@@ -12,6 +13,15 @@ class UploadStatus(Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     CANCELLED = "cancelled"
+    SKIPPED = "skipped"
+
+
+class DuplicateAction(Enum):
+    """User's choice when a duplicate file is detected."""
+
+    REPLACE = "replace"
+    SKIP = "skip"
+    CANCEL = "cancel"
 
 
 @dataclass
@@ -44,6 +54,8 @@ class Certification:
     crt_cst_id: int
     crt_po_number: str | None
     crt_or_id: int
+    crt_date: datetime | None = None
+    crt_added_date: datetime | None = None
     media_files: list[MediaFile] = field(default_factory=list)
 
 
@@ -57,3 +69,20 @@ class UploadJob:
     box_file_id: str | None = None
     error_message: str | None = None
     progress_percent: int = 0
+
+
+@dataclass
+class UploadHistoryRecord:
+    """Persistent record of a file upload."""
+
+    id: int | None = None
+    session_id: str = ""
+    timestamp: datetime | None = None
+    order_id: int = 0
+    cert_no: str = ""
+    filename: str = ""
+    box_file_id: str | None = None
+    status: str = "pending"
+    error_msg: str | None = None
+    customer_name: str | None = None
+    file_size: int | None = None

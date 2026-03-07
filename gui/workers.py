@@ -1,12 +1,15 @@
 """QThread workers for background processing."""
 
+import threading
+from datetime import datetime
 from pathlib import Path
 
 from PySide6.QtCore import QThread, Signal
 
 from database.connection import DatabaseConfig
 from database.queries import query_order_with_customer, query_partial_order_with_customer
-from database.models import Certification, Customer, UploadJob, UploadStatus
+from database.models import Certification, Customer, DuplicateAction, UploadJob, UploadStatus, UploadHistoryRecord
+from database.history import generate_session_id, record_upload
 from box_service import BoxUploader
 
 
@@ -58,8 +61,9 @@ class UploadWorker(QThread):
 
     progress = Signal(int, int, str)  # current, total, filename
     file_completed = Signal(object)  # UploadJob
-    finished = Signal(int, int)  # success_count, failed_count
+    finished = Signal(int, int, int)  # success_count, failed_count, skipped_count
     error = Signal(str)  # error message
+    duplicate_found = Signal(str, str)  # filename, cert_no
 
     def __init__(
         self,
@@ -67,6 +71,7 @@ class UploadWorker(QThread):
         certifications: list[Certification],
         root_folder_id: str,
         media_base_path: Path,
+        customer_name: str | None = None,
         parent=None,
     ):
         super().__init__(parent)
@@ -74,11 +79,26 @@ class UploadWorker(QThread):
         self._certifications = certifications
         self._root_folder_id = root_folder_id
         self._media_base_path = media_base_path
+        self._customer_name = customer_name
+        self._session_id = generate_session_id()
         self._cancelled = False
+
+        # Duplicate handling state
+        self._duplicate_response: DuplicateAction | None = None
+        self._apply_to_all: bool = False
+        self._pending_response = threading.Event()
 
     def cancel(self) -> None:
         """Request cancellation."""
         self._cancelled = True
+        # Unblock waiting for duplicate response if cancelled
+        self._pending_response.set()
+
+    def set_duplicate_response(self, action: DuplicateAction, apply_to_all: bool) -> None:
+        """Set the user's response to a duplicate file prompt."""
+        self._duplicate_response = action
+        self._apply_to_all = apply_to_all
+        self._pending_response.set()
 
     def run(self) -> None:
         try:
@@ -93,6 +113,7 @@ class UploadWorker(QThread):
         current_file = 0
         success_count = 0
         failed_count = 0
+        skipped_count = 0
 
         for cert in self._certifications:
             if self._cancelled:
@@ -128,6 +149,34 @@ class UploadWorker(QThread):
                         self._root_folder_id, folder_path
                     )
 
+                    # Check for duplicate file
+                    existing_file_id = uploader.file_exists(target_folder_id, filename)
+                    if existing_file_id:
+                        # Determine action based on apply_to_all or ask user
+                        if self._apply_to_all and self._duplicate_response:
+                            action = self._duplicate_response
+                        else:
+                            # Reset event and wait for response from GUI
+                            self._pending_response.clear()
+                            self.duplicate_found.emit(filename, cert.crt_cert_no)
+                            self._pending_response.wait()
+
+                            if self._cancelled:
+                                break
+
+                            action = self._duplicate_response
+
+                        if action == DuplicateAction.SKIP:
+                            job.status = UploadStatus.SKIPPED
+                            job.progress_percent = 100
+                            skipped_count += 1
+                            self._record_and_emit(job, cert, filename, local_path, "skipped")
+                            continue
+                        elif action == DuplicateAction.CANCEL:
+                            self.cancel()
+                            break
+                        # else REPLACE - proceed with upload
+
                     # Upload file
                     uploaded = uploader.upload_file(local_path, target_folder_id)
                     job.status = UploadStatus.COMPLETED
@@ -145,6 +194,43 @@ class UploadWorker(QThread):
                     job.error_message = str(e)
                     failed_count += 1
 
-                self.file_completed.emit(job)
+                self._record_and_emit(job, cert, filename, local_path)
 
-        self.finished.emit(success_count, failed_count)
+        self.finished.emit(success_count, failed_count, skipped_count)
+
+    def _record_and_emit(
+        self,
+        job: UploadJob,
+        cert: Certification,
+        filename: str,
+        local_path: Path,
+        status_override: str | None = None,
+    ) -> None:
+        """Record upload to history and emit completion signal."""
+        file_size = local_path.stat().st_size if local_path.exists() else None
+
+        # Determine status string
+        if status_override:
+            status = status_override
+        elif job.status == UploadStatus.COMPLETED:
+            status = "success"
+        elif job.status == UploadStatus.SKIPPED:
+            status = "skipped"
+        else:
+            status = "failed"
+
+        history_record = UploadHistoryRecord(
+            session_id=self._session_id,
+            timestamp=datetime.now(),
+            order_id=cert.crt_or_id,
+            cert_no=cert.crt_cert_no,
+            filename=filename,
+            box_file_id=job.box_file_id,
+            status=status,
+            error_msg=job.error_message,
+            customer_name=self._customer_name,
+            file_size=file_size,
+        )
+        record_upload(history_record)
+
+        self.file_completed.emit(job)

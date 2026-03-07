@@ -21,11 +21,12 @@ from PySide6.QtWidgets import (
 
 WIDE_LAYOUT_THRESHOLD = 1200  # px
 
-from database.models import Certification, Customer
+from database.models import Certification, Customer, DuplicateAction
 from settings import load_settings, save_settings
 from settings.config import get_database_config
 from gui.widgets import CertificationTable, HistoryViewer, LogViewer, UploadProgressWidget
 from gui.widgets.card import Card
+from gui.dialogs import DuplicateFileDialog
 from gui.settings_dialog import SettingsDialog
 from gui.workers import QueryWorker, PartialQueryWorker, UploadWorker
 from gui.theme import COLORS, SPACING, get_icon
@@ -404,6 +405,7 @@ class MainWindow(QMainWindow):
         self._upload_worker.file_completed.connect(self._on_file_completed)
         self._upload_worker.finished.connect(self._on_upload_finished)
         self._upload_worker.error.connect(self._on_upload_error)
+        self._upload_worker.duplicate_found.connect(self._on_duplicate_found)
         self._upload_worker.start()
 
         self._update_ui_state()
@@ -423,23 +425,35 @@ class MainWindow(QMainWindow):
         filename = Path(job.media_file.med_full_path).name
         if job.status.value == "completed":
             self._log.log_success(f"Uploaded: {filename}")
+        elif job.status.value == "skipped":
+            self._log.log_warning(f"Skipped: {filename}")
         else:
             self._log.log_error(f"Failed: {filename} - {job.error_message}")
             self._log_card.expand()
 
-    def _on_upload_finished(self, success_count: int, failed_count: int) -> None:
+    def _on_duplicate_found(self, filename: str, cert_no: str) -> None:
+        """Handle duplicate file detection - show dialog to user."""
+        dialog = DuplicateFileDialog(filename, cert_no, self)
+        dialog.exec()
+        action = dialog.action
+        apply_to_all = dialog.apply_to_all
+        self._upload_worker.set_duplicate_response(action, apply_to_all)
+
+    def _on_upload_finished(self, success_count: int, failed_count: int, skipped_count: int = 0) -> None:
         """Handle upload completion."""
         # Safely clean up the worker thread
         if self._upload_worker:
             self._upload_worker.wait()
             self._upload_worker.deleteLater()
             self._upload_worker = None
-        total = success_count + failed_count
-        self._progress_widget.set_completed(success_count, total)
+        total = success_count + failed_count + skipped_count
+        self._progress_widget.set_completed(success_count, total, skipped_count)
 
         self._log.log("", timestamp=False)
         self._log.log("=== Upload Complete ===", timestamp=False)
         self._log.log(f"Successful: {success_count}", timestamp=False)
+        if skipped_count > 0:
+            self._log.log(f"Skipped: {skipped_count}", timestamp=False)
         self._log.log(f"Failed: {failed_count}", timestamp=False)
 
         # Refresh history viewer to show new uploads

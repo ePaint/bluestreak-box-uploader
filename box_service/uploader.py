@@ -52,6 +52,14 @@ class BoxUploader:
             raise BoxAuthError("Not connected. Call connect() first.")
         return self._folder_manager
 
+    def file_exists(self, folder_id: str, filename: str) -> str | None:
+        """Check if file exists in folder. Returns file_id if exists, None otherwise."""
+        items = _retry_on_jti_error(self.client.folders.get_folder_items, folder_id)
+        for item in items.entries:
+            if item.name == filename and item.type == "file":
+                return item.id
+        return None
+
     def get_current_user(self) -> UserFull:
         """Get the current authenticated user."""
         return self.client.users.get_user_me()
