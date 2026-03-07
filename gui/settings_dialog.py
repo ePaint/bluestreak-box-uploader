@@ -25,7 +25,7 @@ from PySide6.QtWidgets import QApplication
 
 from settings import load_settings, save_settings
 from database.connection import DatabaseConfig, check_connection
-from gui.theme import COLORS, SPACING, RADIUS, FONT_SIZE, get_icon
+from gui.theme import SPACING, SIZES, get_icon
 
 
 class SettingsDialog(QDialog):
@@ -34,8 +34,8 @@ class SettingsDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Settings")
-        self.setMinimumWidth(550)
-        self.setMinimumHeight(400)
+        self.setMinimumWidth(SIZES["dialog_min_w"])
+        self.setMinimumHeight(SIZES["dialog_min_h"])
         self._setup_ui()
         self._load_settings()
 
@@ -85,16 +85,8 @@ class SettingsDialog(QDialog):
     def _create_help_label(self, text: str) -> QLabel:
         """Create a styled help text label."""
         label = QLabel(text)
+        label.setObjectName("helpLabel")
         label.setWordWrap(True)
-        label.setStyleSheet(f"""
-            QLabel {{
-                color: {COLORS['text_secondary']};
-                font-size: {FONT_SIZE['xs']}pt;
-                padding: 8px;
-                background-color: {COLORS['background']};
-                border-radius: {RADIUS['sm']}px;
-            }}
-        """)
         return label
 
     def _setup_general_tab(self) -> None:
@@ -122,16 +114,32 @@ class SettingsDialog(QDialog):
         font_size_layout.addWidget(self._font_size_slider)
 
         self._font_size_label = QLabel("10 pt")
-        self._font_size_label.setMinimumWidth(40)
+        self._font_size_label.setMinimumWidth(SIZES["label_min_w"])
         font_size_layout.addWidget(self._font_size_label)
 
         layout.addRow("Font Size:", font_size_layout)
 
-        # Help text
+        # UI Scale dropdown
+        self._scale_combo = QComboBox()
+        self._scale_combo.addItems(["100%", "125%", "150%"])
+        self._scale_combo.setToolTip("Scale all UI elements (requires restart)")
+        layout.addRow("UI Scale:", self._scale_combo)
+
+        # Help text for theme/font/scale
         help_label = self._create_help_label(
-            "Theme and font size changes require restarting the application to take effect."
+            "Theme, font size, and UI scale changes require restarting the application to take effect."
         )
         layout.addRow("", help_label)
+
+        # Warning days threshold
+        self._warning_days = QSpinBox()
+        self._warning_days.setRange(0, 365)
+        self._warning_days.setValue(30)
+        self._warning_days.setSuffix(" days")
+        self._warning_days.setToolTip(
+            "Warn if certification is older than this many days (0 = disabled)"
+        )
+        layout.addRow("Cert Age Warning:", self._warning_days)
 
     def _setup_db_tab(self) -> None:
         layout = QFormLayout(self._db_tab)
@@ -172,7 +180,7 @@ class SettingsDialog(QDialog):
         self._db_sqlite_path.setPlaceholderText("Path to SQLite database")
         sqlite_layout.addWidget(self._db_sqlite_path)
         self._db_sqlite_browse = QPushButton("Browse...")
-        self._db_sqlite_browse.setMaximumHeight(36)
+        self._db_sqlite_browse.setMaximumHeight(SIZES["btn_max_h"])
         self._db_sqlite_browse.clicked.connect(self._browse_sqlite)
         sqlite_layout.addWidget(self._db_sqlite_browse)
         layout.addRow("SQLite Path:", sqlite_layout)
@@ -205,7 +213,7 @@ class SettingsDialog(QDialog):
         self._box_jwt_path.setPlaceholderText("Path to Box JWT config JSON file")
         jwt_layout.addWidget(self._box_jwt_path)
         self._box_jwt_browse = QPushButton("Browse...")
-        self._box_jwt_browse.setMaximumHeight(36)
+        self._box_jwt_browse.setMaximumHeight(SIZES["btn_max_h"])
         self._box_jwt_browse.clicked.connect(self._browse_jwt)
         jwt_layout.addWidget(self._box_jwt_browse)
         layout.addRow("JWT Config:", jwt_layout)
@@ -235,7 +243,7 @@ class SettingsDialog(QDialog):
         self._media_base_path.setPlaceholderText(r"e.g., D:\inetpub\wwwroot\Bluestreak\Media")
         media_layout.addWidget(self._media_base_path)
         self._media_browse = QPushButton("Browse...")
-        self._media_browse.setMaximumHeight(36)
+        self._media_browse.setMaximumHeight(SIZES["btn_max_h"])
         self._media_browse.clicked.connect(self._browse_media)
         media_layout.addWidget(self._media_browse)
         layout.addRow("Media Base Path:", media_layout)
@@ -252,24 +260,27 @@ class SettingsDialog(QDialog):
         settings = load_settings()
 
         # General tab
-        self._theme_combo.setCurrentText(settings.get("theme", "dark"))
-        font_size = settings.get("font_size", 10)
-        self._font_size_slider.setValue(font_size)
-        self._font_size_label.setText(f"{font_size} pt")
+        self._theme_combo.setCurrentText(settings.theme)
+        self._font_size_slider.setValue(settings.font_size)
+        self._font_size_label.setText(f"{settings.font_size} pt")
+        # Set UI scale dropdown (convert 100/125/150 to index)
+        scale_map = {100: 0, 125: 1, 150: 2}
+        self._scale_combo.setCurrentIndex(scale_map.get(settings.ui_scale, 0))
+        self._warning_days.setValue(settings.warning_days_threshold)
 
         # Database tab
-        self._db_driver.setCurrentText(settings.get("db_driver", "sqlserver"))
-        self._db_host.setText(settings.get("db_host", ""))
-        self._db_port.setValue(settings.get("db_port", 1433))
-        self._db_database.setText(settings.get("db_database", "Bluestreak"))
-        self._db_username.setText(settings.get("db_username", ""))
-        self._db_password.setText(settings.get("db_password", ""))
-        self._db_sqlite_path.setText(settings.get("db_sqlite_path", ""))
-        self._search_limit.setValue(settings.get("search_result_limit", 100))
+        self._db_driver.setCurrentText(settings.db_driver)
+        self._db_host.setText(settings.db_host)
+        self._db_port.setValue(settings.db_port)
+        self._db_database.setText(settings.db_database)
+        self._db_username.setText(settings.db_username)
+        self._db_password.setText(settings.db_password)
+        self._db_sqlite_path.setText(settings.db_sqlite_path)
+        self._search_limit.setValue(settings.search_result_limit)
 
-        self._box_jwt_path.setText(settings.get("box_jwt_config_path", ""))
+        self._box_jwt_path.setText(settings.box_jwt_config_path)
 
-        self._media_base_path.setText(settings.get("media_base_path", ""))
+        self._media_base_path.setText(settings.media_base_path)
 
         self._on_driver_changed(self._db_driver.currentText())
 
@@ -278,43 +289,50 @@ class SettingsDialog(QDialog):
         settings = load_settings()
 
         # General tab
-        settings["theme"] = self._theme_combo.currentText()
-        settings["font_size"] = self._font_size_slider.value()
+        settings.theme = self._theme_combo.currentText()
+        settings.font_size = self._font_size_slider.value()
+        # Convert UI scale dropdown index to value (100/125/150)
+        scale_values = [100, 125, 150]
+        settings.ui_scale = scale_values[self._scale_combo.currentIndex()]
+        settings.warning_days_threshold = self._warning_days.value()
 
         # Database tab
-        settings["db_driver"] = self._db_driver.currentText()
-        settings["db_host"] = self._db_host.text()
-        settings["db_port"] = self._db_port.value()
-        settings["db_database"] = self._db_database.text()
-        settings["db_username"] = self._db_username.text()
-        settings["db_password"] = self._db_password.text()
-        settings["db_sqlite_path"] = self._db_sqlite_path.text()
-        settings["search_result_limit"] = self._search_limit.value()
+        settings.db_driver = self._db_driver.currentText()
+        settings.db_host = self._db_host.text()
+        settings.db_port = self._db_port.value()
+        settings.db_database = self._db_database.text()
+        settings.db_username = self._db_username.text()
+        settings.db_password = self._db_password.text()
+        settings.db_sqlite_path = self._db_sqlite_path.text()
+        settings.search_result_limit = self._search_limit.value()
 
-        settings["box_jwt_config_path"] = self._box_jwt_path.text()
+        settings.box_jwt_config_path = self._box_jwt_path.text()
 
-        settings["media_base_path"] = self._media_base_path.text()
+        settings.media_base_path = self._media_base_path.text()
 
         save_settings(settings)
 
     def _save_and_close(self) -> None:
         """Save settings and close dialog."""
-        # Check if theme or font changed
+        # Check if theme, font, or scale changed
         old_settings = load_settings()
-        old_theme = old_settings.get("theme", "dark")
-        old_font = old_settings.get("font_size", 10)
+        old_theme = old_settings.theme
+        old_font = old_settings.font_size
+        old_scale = old_settings.ui_scale
 
         new_theme = self._theme_combo.currentText()
         new_font = self._font_size_slider.value()
+        scale_values = [100, 125, 150]
+        new_scale = scale_values[self._scale_combo.currentIndex()]
 
         self._save_settings()
 
-        # Notify user if theme/font changed (requires restart for full effect)
-        if old_theme != new_theme or old_font != new_font:
+        # Notify user if theme/font/scale changed (requires restart for full effect)
+        if old_theme != new_theme or old_font != new_font or old_scale != new_scale:
             QMessageBox.information(
                 self,
                 "Restart Required",
-                "Theme and font changes will take full effect after restarting the application.",
+                "Theme, font, and UI scale changes will take full effect after restarting the application.",
             )
 
         self.accept()

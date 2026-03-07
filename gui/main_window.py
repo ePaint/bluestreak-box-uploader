@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
     QSplitter,
 )
 
-WIDE_LAYOUT_THRESHOLD = 1200  # px
+# WIDE_LAYOUT_THRESHOLD is set dynamically from SIZES["wide_threshold"]
 
 from database.models import Certification, Customer, DuplicateAction
 from settings import load_settings, save_settings
@@ -29,7 +29,7 @@ from gui.widgets.card import Card
 from gui.dialogs import DuplicateFileDialog
 from gui.settings_dialog import SettingsDialog
 from gui.workers import QueryWorker, PartialQueryWorker, UploadWorker
-from gui.theme import COLORS, SPACING, get_icon
+from gui.theme import COLORS, SPACING, SIZES, get_icon
 
 
 class MainWindow(QMainWindow):
@@ -41,8 +41,8 @@ class MainWindow(QMainWindow):
         icon_path = Path(__file__).parent / "assets" / "app_icon.ico"
         if icon_path.exists():
             self.setWindowIcon(QIcon(str(icon_path)))
-        self.setMinimumSize(850, 750)
-        self.resize(900, 1000)
+        self.setMinimumSize(SIZES["window_min_w"], SIZES["window_min_h"])
+        self.resize(SIZES["window_default_w"], SIZES["window_default_h"])
 
         self._certifications: list[Certification] = []
         self._customer: Customer | None = None
@@ -91,8 +91,8 @@ class MainWindow(QMainWindow):
         self._order_input.setValidator(QRegularExpressionValidator(QRegularExpression(r"^\d{0,6}$")))
         self._order_input.returnPressed.connect(self._search_order)
         self._order_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._order_input.setMaximumWidth(300)  # Constrain width
-        self._order_input.setMinimumWidth(200)  # Ensure minimum usable width
+        self._order_input.setMaximumWidth(SIZES["input_max_w"])
+        self._order_input.setMinimumWidth(SIZES["input_min_w"])
         # Select all text on focus for easy replacement
         self._order_input.focusInEvent = lambda e: (
             QLineEdit.focusInEvent(self._order_input, e),
@@ -102,7 +102,7 @@ class MainWindow(QMainWindow):
 
         self._search_btn = QPushButton("Search")
         self._search_btn.setProperty("primary", True)
-        self._search_btn.setMaximumWidth(120)  # Constrain button width too
+        self._search_btn.setMaximumWidth(SIZES["btn_w_md"])
         self._search_btn.clicked.connect(self._search_order)
         lookup_layout.addWidget(self._search_btn, stretch=0)
 
@@ -131,13 +131,13 @@ class MainWindow(QMainWindow):
         self._certs_card = Card(title="CERTIFICATIONS", icon=get_icon("certificate"))
 
         self._cert_table = CertificationTable()
-        self._cert_table.setMinimumHeight(200)
+        self._cert_table.setMinimumHeight(SIZES["table_min_h"])
         self._cert_table.selection_changed.connect(self._update_ui_state)
 
         # Auto-upload checkbox (added to cert_table toolbar)
         self._auto_upload_checkbox = QCheckBox("Auto-upload when single certification found")
         settings = load_settings()
-        self._auto_upload_checkbox.setChecked(settings.get("auto_upload_single", True))
+        self._auto_upload_checkbox.setChecked(settings.auto_upload_single)
         self._auto_upload_checkbox.toggled.connect(self._on_auto_upload_changed)
         self._cert_table.add_toolbar_widget(self._auto_upload_checkbox)
 
@@ -147,7 +147,7 @@ class MainWindow(QMainWindow):
         self._warning_label = QLabel()
         self._warning_label.setObjectName("warningLabel")
         self._warning_label.setWordWrap(True)
-        self._warning_label.setMinimumHeight(50)  # Reserve space to prevent layout shift
+        self._warning_label.setMinimumHeight(SIZES["warning_min_h"])
         self._warning_label.setVisible(False)
         self._certs_card.add_widget(self._warning_label)
 
@@ -170,12 +170,12 @@ class MainWindow(QMainWindow):
 
         # Current log tab
         self._log = LogViewer()
-        self._log.setMinimumHeight(100)
+        self._log.setMinimumHeight(SIZES["log_min_h"])
         self._log_tabs.addTab(self._log, "Current")
 
         # History tab
         self._history_viewer = HistoryViewer()
-        self._history_viewer.setMinimumHeight(150)
+        self._history_viewer.setMinimumHeight(SIZES["history_min_h"])
         self._log_tabs.addTab(self._history_viewer, "History")
 
         self._log_card.add_widget(self._log_tabs)
@@ -201,13 +201,13 @@ class MainWindow(QMainWindow):
         button_layout.addStretch()
 
         self._upload_btn = QPushButton("Upload Selected")
-        self._upload_btn.setMinimumWidth(140)
+        self._upload_btn.setMinimumWidth(SIZES["btn_w_lg"])
         self._upload_btn.setProperty("primary", True)
         self._upload_btn.clicked.connect(self._start_upload)
         button_layout.addWidget(self._upload_btn)
 
         self._cancel_btn = QPushButton("Cancel")
-        self._cancel_btn.setMinimumWidth(100)
+        self._cancel_btn.setMinimumWidth(SIZES["btn_w_sm"])
         self._cancel_btn.setEnabled(False)
         self._cancel_btn.clicked.connect(self._cancel_upload)
         button_layout.addWidget(self._cancel_btn)
@@ -217,7 +217,7 @@ class MainWindow(QMainWindow):
     def _load_last_order(self) -> None:
         """Load the last searched order ID."""
         settings = load_settings()
-        last_order = settings.get("last_order_id", "")
+        last_order = settings.last_order_id
         if last_order:
             self._order_input.setText(last_order)
 
@@ -261,7 +261,7 @@ class MainWindow(QMainWindow):
     def _on_auto_upload_changed(self, checked: bool) -> None:
         """Save auto-upload preference."""
         settings = load_settings()
-        settings["auto_upload_single"] = checked
+        settings.auto_upload_single = checked
         save_settings(settings)
 
     def _search_order(self) -> None:
@@ -277,7 +277,7 @@ class MainWindow(QMainWindow):
 
         # Save last search
         settings = load_settings()
-        settings["last_order_id"] = search_text
+        settings.last_order_id = search_text
         save_settings(settings)
 
         # Clear previous results
@@ -288,7 +288,7 @@ class MainWindow(QMainWindow):
         self._log.clear()
 
         # Get search limit from settings
-        limit = settings.get("search_result_limit", 100)
+        limit = settings.search_result_limit
         self._log.log(f"Searching for orders containing '{search_text}'...")
 
         # Start partial query
@@ -311,7 +311,8 @@ class MainWindow(QMainWindow):
             self._update_ui_state()
             return
 
-        self._cert_table.set_certifications(certs)
+        settings = load_settings()
+        self._cert_table.set_certifications(certs, warning_days=settings.warning_days_threshold)
 
         # Log results
         total_files = sum(len(c.media_files) for c in certs)
@@ -361,7 +362,7 @@ class MainWindow(QMainWindow):
             return
 
         settings = load_settings()
-        jwt_path = settings.get("box_jwt_config_path", "")
+        jwt_path = settings.box_jwt_config_path
         if not jwt_path:
             result = QMessageBox.question(
                 self,
@@ -373,7 +374,7 @@ class MainWindow(QMainWindow):
                 self._show_settings()
             return
 
-        media_base = settings.get("media_base_path", "")
+        media_base = settings.media_base_path
         if not media_base:
             result = QMessageBox.question(
                 self,
@@ -482,7 +483,7 @@ class MainWindow(QMainWindow):
         """Handle window resize to switch between narrow and wide layouts."""
         super().resizeEvent(event)
         width = event.size().width()
-        should_be_wide = width >= WIDE_LAYOUT_THRESHOLD
+        should_be_wide = width >= SIZES["wide_threshold"]
 
         if should_be_wide and not self._is_wide_layout:
             self._switch_to_wide_layout()
@@ -493,7 +494,7 @@ class MainWindow(QMainWindow):
         """Move LOG card to side panel (splitter)."""
         self._log_card.setParent(None)
         self._splitter.addWidget(self._log_card)
-        self._splitter.setSizes([500, 500])  # Default 50/50 split
+        self._splitter.setSizes([SIZES["splitter_default"], SIZES["splitter_default"]])
         self._narrow_log_container.setVisible(False)
         # Force expand and disable collapse in wide mode
         self._log_card.set_collapsible(False)

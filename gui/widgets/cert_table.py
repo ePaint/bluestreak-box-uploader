@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
 )
 
 from database.models import Certification, MediaFile
-from gui.theme import COLORS, SPACING
+from gui.theme import COLORS, SPACING, SIZES
 from settings import load_settings, save_settings
 
 
@@ -43,7 +43,7 @@ class CertificationTable(QWidget):
         self._tree.setHeaderLabels(["Cert No", "Customer", "PO#", "Cert Date", "Added", "Files", ""])
         self._tree.setAlternatingRowColors(True)
         self._tree.setRootIsDecorated(True)
-        self._tree.setIndentation(20)
+        self._tree.setIndentation(SIZES["tree_indent"])
         self._tree.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
 
         # Column sizing
@@ -331,12 +331,12 @@ class CertificationTable(QWidget):
                 self._tree.setColumnWidth(i, width)
         else:
             # Default widths
-            self._tree.setColumnWidth(0, 140)
-            self._tree.setColumnWidth(1, 200)  # Customer
-            self._tree.setColumnWidth(2, 100)
-            self._tree.setColumnWidth(3, 90)
-            self._tree.setColumnWidth(4, 90)
-            self._tree.setColumnWidth(5, 50)
+            self._tree.setColumnWidth(0, SIZES["col_cert"])
+            self._tree.setColumnWidth(1, SIZES["col_customer"])
+            self._tree.setColumnWidth(2, SIZES["col_po"])
+            self._tree.setColumnWidth(3, SIZES["col_date"])
+            self._tree.setColumnWidth(4, SIZES["col_date"])
+            self._tree.setColumnWidth(5, SIZES["col_files"])
 
     def _on_column_resized(self, index: int, old_size: int, new_size: int) -> None:
         """Save column widths when user resizes."""

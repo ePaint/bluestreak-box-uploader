@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
 )
 
 from database.models import DuplicateAction
-from gui.theme import COLORS, FONT_SIZE, SPACING, RADIUS, get_icon
+from gui.theme import COLORS, FONT_SIZE, SPACING, RADIUS, SIZES, get_icon
 
 
 class DuplicateFileDialog(QDialog):
@@ -22,7 +22,7 @@ class DuplicateFileDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("File Already Exists")
         self.setModal(True)
-        self.setMinimumWidth(400)
+        self.setMinimumWidth(SIZES["dialog_small_w"])
 
         self._action: DuplicateAction = DuplicateAction.CANCEL
         self._apply_to_all: bool = False
@@ -39,8 +39,8 @@ class DuplicateFileDialog(QDialog):
         header_layout.setSpacing(SPACING["sm"])
 
         icon_label = QLabel()
-        icon = get_icon("warning", COLORS["warning"], 24)
-        icon_label.setPixmap(icon.pixmap(24, 24))
+        icon = get_icon("warning", COLORS["warning"], SIZES["icon_lg"])
+        icon_label.setPixmap(icon.pixmap(SIZES["icon_lg"], SIZES["icon_lg"]))
         header_layout.addWidget(icon_label)
 
         title_label = QLabel("File Already Exists")
@@ -78,19 +78,19 @@ class DuplicateFileDialog(QDialog):
         # Replace button (primary action)
         replace_btn = QPushButton("Replace")
         replace_btn.setProperty("primary", True)
-        replace_btn.setMinimumWidth(90)
+        replace_btn.setMinimumWidth(SIZES["btn_w_xs"])
         replace_btn.clicked.connect(self._on_replace)
         button_layout.addWidget(replace_btn)
 
         # Skip button
         skip_btn = QPushButton("Skip")
-        skip_btn.setMinimumWidth(90)
+        skip_btn.setMinimumWidth(SIZES["btn_w_xs"])
         skip_btn.clicked.connect(self._on_skip)
         button_layout.addWidget(skip_btn)
 
         # Cancel button
         cancel_btn = QPushButton("Cancel All")
-        cancel_btn.setMinimumWidth(90)
+        cancel_btn.setMinimumWidth(SIZES["btn_w_xs"])
         cancel_btn.clicked.connect(self._on_cancel)
         button_layout.addWidget(cancel_btn)
 

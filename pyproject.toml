@@ -1,6 +1,6 @@
 [project]
 name = "bluestreak-box-uploader"
-version = "0.1.5"
+version = "0.1.6"
 description = "Upload Bluestreak certifications to Box.com"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -8,6 +8,7 @@ dependencies = [
     "box-sdk-gen>=1.0.0",
     "cryptography>=3.0.0",
     "pillow>=12.1.1",
+    "pydantic>=2.0.0",
     "pyjwt>=2.0.0",
     "pyodbc>=5.0.0",
     "pyside6>=6.6.0",

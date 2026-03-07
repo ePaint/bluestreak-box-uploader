@@ -1,4 +1,4 @@
-"""Application entry point with modern dark theme."""
+"""Application entry point with modern theme support."""
 
 import sys
 from pathlib import Path
@@ -7,8 +7,10 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QPalette, QColor, QIcon
 from PySide6.QtWidgets import QApplication
 
+from database.history import init_history_db
 from gui.main_window import MainWindow
-from gui.theme import COLORS, get_stylesheet
+from gui.theme import COLORS, get_stylesheet, set_theme, set_font_scale, set_ui_scale
+from settings import load_settings
 
 
 def get_icon_path() -> Path | None:
@@ -30,11 +32,21 @@ def get_icon_path() -> Path | None:
     return None
 
 
-def apply_dark_theme(app: QApplication) -> None:
-    """Apply the modern dark theme to the application."""
+def apply_theme(app: QApplication) -> None:
+    """Apply the theme from settings to the application."""
+    # Load settings and apply theme/font/scale before building UI
+    settings = load_settings()
+    theme = settings.theme
+    font_size = settings.font_size
+    ui_scale = settings.ui_scale
+
+    set_theme(theme)
+    set_font_scale(font_size)
+    set_ui_scale(ui_scale)
+
     app.setStyle("Fusion")
 
-    # Set color palette
+    # Set color palette based on current COLORS (set by set_theme)
     palette = QPalette()
 
     palette.setColor(QPalette.ColorRole.Window, QColor(COLORS["background"]))
@@ -49,7 +61,12 @@ def apply_dark_theme(app: QApplication) -> None:
     palette.setColor(QPalette.ColorRole.BrightText, QColor(COLORS["error"]))
     palette.setColor(QPalette.ColorRole.Link, QColor(COLORS["accent"]))
     palette.setColor(QPalette.ColorRole.Highlight, QColor(COLORS["accent"]))
-    palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.black)
+
+    # Set highlighted text color based on theme
+    if theme == "light":
+        palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.white)
+    else:
+        palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.black)
 
     palette.setColor(
         QPalette.ColorGroup.Disabled,
@@ -84,7 +101,10 @@ def launch_app() -> int:
     if icon_path:
         app.setWindowIcon(QIcon(str(icon_path)))
 
-    apply_dark_theme(app)
+    apply_theme(app)
+
+    # Initialize history database
+    init_history_db()
 
     window = MainWindow()
     window.show()

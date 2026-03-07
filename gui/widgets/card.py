@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QColor, QIcon
 
-from gui.theme import COLORS, SPACING
+from gui.theme import COLORS, SPACING, SIZES
 
 
 class Card(QFrame):
@@ -59,8 +59,8 @@ class Card(QFrame):
             # Icon (if provided)
             if self._icon:
                 self._icon_label = QLabel()
-                self._icon_label.setPixmap(self._icon.pixmap(16, 16))
-                self._icon_label.setFixedSize(20, 20)
+                self._icon_label.setPixmap(self._icon.pixmap(SIZES["icon_sm"], SIZES["icon_sm"]))
+                self._icon_label.setFixedSize(SIZES["icon_md"], SIZES["icon_md"])
                 self._icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 header_layout.addWidget(self._icon_label)
 
@@ -80,7 +80,7 @@ class Card(QFrame):
             if self._collapsible:
                 self._collapse_btn = QPushButton()
                 self._collapse_btn.setObjectName("collapseBtn")
-                self._collapse_btn.setFixedSize(24, 24)
+                self._collapse_btn.setFixedSize(SIZES["collapse_btn"], SIZES["collapse_btn"])
                 self._update_collapse_icon()
                 self._collapse_btn.clicked.connect(self._toggle_collapse)
                 header_layout.addWidget(self._collapse_btn)
@@ -96,9 +96,9 @@ class Card(QFrame):
 
         # Add subtle shadow
         shadow = QGraphicsDropShadowEffect(self)
-        shadow.setBlurRadius(20)
+        shadow.setBlurRadius(SIZES["shadow_blur"])
         shadow.setXOffset(0)
-        shadow.setYOffset(4)
+        shadow.setYOffset(SIZES["shadow_offset"])
         shadow.setColor(QColor(0, 0, 0, 40))
         self.setGraphicsEffect(shadow)
 

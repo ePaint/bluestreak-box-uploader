@@ -47,8 +47,8 @@ COLORS_LIGHT = {
 # Default to dark theme (will be set by app.py based on settings)
 COLORS = COLORS_DARK.copy()
 
-# Spacing constants
-SPACING = {
+# Base spacing constants (scaled by set_ui_scale)
+SPACING_BASE = {
     "xs": 4,
     "sm": 8,
     "md": 16,
@@ -56,12 +56,51 @@ SPACING = {
     "xl": 32,
 }
 
-# Border radius
-RADIUS = {
+# Base border radius (scaled by set_ui_scale)
+RADIUS_BASE = {
     "sm": 4,
     "md": 8,
     "lg": 12,
 }
+
+# Base sizes for UI elements (scaled by set_ui_scale)
+SIZES_BASE = {
+    # Window
+    "window_min_w": 850, "window_min_h": 750,
+    "window_default_w": 900, "window_default_h": 1000,
+    "wide_threshold": 1200,
+
+    # Dialogs
+    "dialog_min_w": 550, "dialog_min_h": 400, "dialog_small_w": 400,
+
+    # Inputs/Buttons
+    "input_max_w": 300, "input_min_w": 200,
+    "btn_w_lg": 140, "btn_w_md": 120, "btn_w_sm": 100, "btn_w_xs": 90,
+    "btn_max_h": 36, "filter_w": 100, "label_min_w": 40,
+
+    # Heights
+    "table_min_h": 200, "log_min_h": 100, "history_min_h": 150, "warning_min_h": 50,
+
+    # Icons
+    "icon_sm": 16, "icon_md": 20, "icon_lg": 24,
+
+    # Stylesheet elements
+    "checkbox": 18, "scrollbar_w": 12, "scrollbar_r": 6, "scrollbar_min_h": 30,
+    "slider_groove": 6, "slider_handle": 16,
+    "tree_indent": 20, "tree_row_h": 28,
+    "combo_min_h": 20, "combo_dropdown_w": 30,
+    "shadow_blur": 20, "shadow_offset": 4,
+    "collapse_btn": 24, "splitter_default": 500,
+
+    # Column defaults
+    "col_cert": 140, "col_customer": 200, "col_po": 100, "col_date": 90, "col_files": 50,
+}
+
+# Active spacing/radius/sizes (updated by set_ui_scale)
+SPACING = SPACING_BASE.copy()
+RADIUS = RADIUS_BASE.copy()
+SIZES = SIZES_BASE.copy()
+_ui_scale_factor = 1.0
 
 # Base font sizes (will be scaled by font_size setting)
 FONT_SIZE_BASE = {
@@ -106,6 +145,28 @@ def set_font_scale(base_size: int) -> None:
     FONT_SIZE["lg"] = int(FONT_SIZE_BASE["lg"] * scale)
     FONT_SIZE["xl"] = int(FONT_SIZE_BASE["xl"] * scale)
     FONT_SIZE["xxl"] = int(FONT_SIZE_BASE["xxl"] * scale)
+
+
+def set_ui_scale(scale: int) -> None:
+    """Set UI scale (100, 125, or 150).
+
+    Args:
+        scale: Scale percentage (100, 125, or 150)
+    """
+    global SIZES, SPACING, RADIUS, _ui_scale_factor
+    _ui_scale_factor = scale / 100.0
+
+    SIZES.clear()
+    for k, v in SIZES_BASE.items():
+        SIZES[k] = int(v * _ui_scale_factor)
+
+    SPACING.clear()
+    for k, v in SPACING_BASE.items():
+        SPACING[k] = int(v * _ui_scale_factor)
+
+    RADIUS.clear()
+    for k, v in RADIUS_BASE.items():
+        RADIUS[k] = int(v * _ui_scale_factor)
 
 
 def get_stylesheet() -> str:
@@ -230,12 +291,12 @@ def get_stylesheet() -> str:
         QCheckBox {{
             color: {COLORS['text']};
             font-size: {FONT_SIZE['md']}pt;
-            spacing: 8px;
+            spacing: {SPACING['sm']}px;
         }}
 
         QCheckBox::indicator {{
-            width: 18px;
-            height: 18px;
+            width: {SIZES['checkbox']}px;
+            height: {SIZES['checkbox']}px;
             border: 2px solid {COLORS['border']};
             border-radius: {RADIUS['sm']}px;
             background-color: {COLORS['surface']};
@@ -292,15 +353,15 @@ def get_stylesheet() -> str:
         /* Scrollbars */
         QScrollBar:vertical {{
             background-color: {COLORS['background']};
-            width: 12px;
-            border-radius: 6px;
+            width: {SIZES['scrollbar_w']}px;
+            border-radius: {SIZES['scrollbar_r']}px;
             margin: 0;
         }}
 
         QScrollBar::handle:vertical {{
             background-color: {COLORS['border']};
-            border-radius: 6px;
-            min-height: 30px;
+            border-radius: {SIZES['scrollbar_r']}px;
+            min-height: {SIZES['scrollbar_min_h']}px;
             margin: 2px;
         }}
 
@@ -314,14 +375,14 @@ def get_stylesheet() -> str:
 
         QScrollBar:horizontal {{
             background-color: {COLORS['background']};
-            height: 12px;
-            border-radius: 6px;
+            height: {SIZES['scrollbar_w']}px;
+            border-radius: {SIZES['scrollbar_r']}px;
         }}
 
         QScrollBar::handle:horizontal {{
             background-color: {COLORS['border']};
-            border-radius: 6px;
-            min-width: 30px;
+            border-radius: {SIZES['scrollbar_r']}px;
+            min-width: {SIZES['scrollbar_min_h']}px;
             margin: 2px;
         }}
 
@@ -405,7 +466,7 @@ def get_stylesheet() -> str:
             border-radius: {RADIUS['md']}px;
             padding: 6px 12px;
             font-size: {FONT_SIZE['md']}pt;
-            min-height: 20px;
+            min-height: {SIZES['combo_min_h']}px;
         }}
 
         QComboBox:focus {{
@@ -414,7 +475,7 @@ def get_stylesheet() -> str:
 
         QComboBox::drop-down {{
             border: none;
-            width: 30px;
+            width: {SIZES['combo_dropdown_w']}px;
         }}
 
         QComboBox QAbstractItemView {{
@@ -428,16 +489,16 @@ def get_stylesheet() -> str:
         /* Slider */
         QSlider::groove:horizontal {{
             background-color: {COLORS['border']};
-            height: 6px;
-            border-radius: 3px;
+            height: {SIZES['slider_groove']}px;
+            border-radius: {int(SIZES['slider_groove'] / 2)}px;
         }}
 
         QSlider::handle:horizontal {{
             background-color: {COLORS['accent']};
-            width: 16px;
-            height: 16px;
-            margin: -5px 0;
-            border-radius: 8px;
+            width: {SIZES['slider_handle']}px;
+            height: {SIZES['slider_handle']}px;
+            margin: -{int((SIZES['slider_handle'] - SIZES['slider_groove']) / 2)}px 0;
+            border-radius: {int(SIZES['slider_handle'] / 2)}px;
         }}
 
         QSlider::handle:horizontal:hover {{
@@ -446,7 +507,7 @@ def get_stylesheet() -> str:
 
         QSlider::sub-page:horizontal {{
             background-color: {COLORS['accent']};
-            border-radius: 3px;
+            border-radius: {int(SIZES['slider_groove'] / 2)}px;
         }}
 
         /* Labels */
@@ -548,18 +609,18 @@ def get_stylesheet() -> str:
         QTreeWidget {{
             background: {COLORS['background']};
             border: 1px solid {COLORS['border']};
-            border-radius: 8px;
+            border-radius: {RADIUS['md']}px;
         }}
         QTreeWidget::item {{
-            padding: 4px;
-            min-height: 28px;
+            padding: {SPACING['xs']}px;
+            min-height: {SIZES['tree_row_h']}px;
         }}
         QTreeWidget::item:selected {{
             background: {COLORS['selection']};
         }}
         QTreeWidget::indicator {{
-            width: 18px;
-            height: 18px;
+            width: {SIZES['checkbox']}px;
+            height: {SIZES['checkbox']}px;
             border: 2px solid {COLORS['border']};
             border-radius: {RADIUS['sm']}px;
             background-color: {COLORS['surface']};
