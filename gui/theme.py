@@ -20,6 +20,7 @@ COLORS_DARK = {
     "accent": "#00b4d8",           # Teal accent
     "accent_hover": "#00c4eb",     # Teal hover
     "accent_pressed": "#0096b4",   # Teal pressed
+    "accent_text": "#000000",      # Text on accent buttons (black on teal)
     "selection": "#1a5a6e",        # Muted teal for row selection
     "success": "#4ade80",          # Green
     "error": "#f87171",            # Red
@@ -37,6 +38,7 @@ COLORS_LIGHT = {
     "accent": "#0071e3",           # Blue accent
     "accent_hover": "#0077ed",     # Blue hover
     "accent_pressed": "#005bb5",   # Blue pressed
+    "accent_text": "#ffffff",      # Text on accent buttons (white on blue)
     "selection": "#b3d7ff",        # Light blue for row selection
     "success": "#28a745",          # Green
     "error": "#dc3545",            # Red
@@ -255,7 +257,7 @@ def get_stylesheet() -> str:
         QPushButton[primary="true"] {{
             background-color: {COLORS['accent']};
             border-color: {COLORS['accent']};
-            color: #000000;
+            color: {COLORS['accent_text']};
             font-weight: bold;
         }}
 
@@ -491,7 +493,7 @@ def get_stylesheet() -> str:
             color: {COLORS['text']};
             border: 1px solid {COLORS['border']};
             selection-background-color: {COLORS['accent']};
-            selection-color: #000000;
+            selection-color: {COLORS['accent_text']};
         }}
 
         /* Date edit */
@@ -559,7 +561,7 @@ def get_stylesheet() -> str:
             background-color: {COLORS['surface']};
             color: {COLORS['text']};
             selection-background-color: {COLORS['accent']};
-            selection-color: #000000;
+            selection-color: {COLORS['accent_text']};
         }}
 
         QCalendarWidget QWidget#qt_calendar_navigationbar {{
@@ -763,6 +765,13 @@ def get_stylesheet() -> str:
         }}
         QProgressBar#uploadProgress[state="error"]::chunk {{
             background: {COLORS['error']};
+        }}
+        QProgressBar#uploadProgress[state="warning"]::chunk {{
+            background: {COLORS['warning']};
+        }}
+        QLabel#uploadStatus[state="warning"] {{
+            color: {COLORS['warning']};
+            font-weight: bold;
         }}
 
         /* Help labels (objectName: helpLabel) */

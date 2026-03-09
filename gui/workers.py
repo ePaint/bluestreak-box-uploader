@@ -61,7 +61,7 @@ class UploadWorker(QThread):
 
     progress = Signal(int, int, str)  # current, total, filename
     file_completed = Signal(object)  # UploadJob
-    finished = Signal(int, int, int)  # success_count, failed_count, skipped_count
+    finished = Signal(int, int, int, bool)  # success_count, failed_count, skipped_count, was_cancelled
     error = Signal(str)  # error message
     duplicate_found = Signal(str, str)  # filename, cert_no
 
@@ -196,7 +196,7 @@ class UploadWorker(QThread):
 
                 self._record_and_emit(job, cert, filename, local_path)
 
-        self.finished.emit(success_count, failed_count, skipped_count)
+        self.finished.emit(success_count, failed_count, skipped_count, self._cancelled)
 
     def _record_and_emit(
         self,

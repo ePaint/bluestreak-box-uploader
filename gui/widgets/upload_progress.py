@@ -70,19 +70,28 @@ class UploadProgressWidget(QWidget):
         self._count_label.setText(f"{current} / {total}")
         self._set_state("ready")
 
-    def set_completed(self, success_count: int, total: int, skipped_count: int = 0) -> None:
+    def set_completed(
+        self, success_count: int, total: int, skipped_count: int = 0, failed_count: int = 0
+    ) -> None:
         """Mark upload as completed."""
         self._progress_bar.setValue(total)
-        if skipped_count > 0:
+
+        if failed_count > 0:
+            # Error state - red bar with X icon
+            self._status_label.setText(
+                f"\u2717 Failed: {failed_count} of {total} files failed"
+            )
+            self._set_state("error")
+        elif skipped_count > 0:
             self._status_label.setText(
                 f"\u2713 Completed: {success_count} uploaded, {skipped_count} skipped"
             )
+            self._set_state("success")
         else:
             self._status_label.setText(f"\u2713 Completed: {success_count} of {total} files uploaded")
-        self._count_label.setText("")
+            self._set_state("success")
 
-        # Update state via properties
-        self._set_state("success")
+        self._count_label.setText("")
 
     def set_error(self, message: str) -> None:
         """Display error state."""
@@ -90,6 +99,15 @@ class UploadProgressWidget(QWidget):
 
         # Update state via properties
         self._set_state("error")
+
+    def set_cancelled(self, success_count: int, total: int) -> None:
+        """Display cancelled state - yellow warning bar."""
+        self._progress_bar.setValue(total)
+        self._status_label.setText(
+            f"\u26A0 WARNING: {success_count} of {total} files uploaded (upload cancelled by user)"
+        )
+        self._count_label.setText("")
+        self._set_state("warning")
 
     def reset(self) -> None:
         """Reset to initial state."""

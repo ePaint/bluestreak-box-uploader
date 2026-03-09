@@ -459,12 +459,12 @@ class MainWindow(QMainWindow):
                 return
 
         # Calculate totals and build cert info string
-        total_files = sum(len(c.media_files) for c in selected)
+        self._upload_total_files = sum(len(c.media_files) for c in selected)
         cert_names = ", ".join(f"Cert#{c.crt_cert_no}" for c in selected)
         if len(cert_names) > 50:
             cert_names = cert_names[:47] + "..."
-        self._progress_widget.set_total(total_files, cert_info=cert_names)
-        self._log.log(f"Starting upload of {total_files} file(s) from {len(selected)} certification(s)...")
+        self._progress_widget.set_total(self._upload_total_files, cert_info=cert_names)
+        self._log.log(f"Starting upload of {self._upload_total_files} file(s) from {len(selected)} certification(s)...")
 
         # Start upload worker
         self._upload_worker = UploadWorker(
@@ -512,7 +512,9 @@ class MainWindow(QMainWindow):
         apply_to_all = dialog.apply_to_all
         self._upload_worker.set_duplicate_response(action, apply_to_all)
 
-    def _on_upload_finished(self, success_count: int, failed_count: int, skipped_count: int = 0) -> None:
+    def _on_upload_finished(
+        self, success_count: int, failed_count: int, skipped_count: int = 0, was_cancelled: bool = False
+    ) -> None:
         """Handle upload completion."""
         # Safely clean up the worker thread
         if self._upload_worker:
@@ -520,14 +522,30 @@ class MainWindow(QMainWindow):
             self._upload_worker.deleteLater()
             self._upload_worker = None
         total = success_count + failed_count + skipped_count
-        self._progress_widget.set_completed(success_count, total, skipped_count)
+
+        # Get original total for cancelled uploads
+        original_total = getattr(self, "_upload_total_files", total)
+
+        if was_cancelled:
+            # Yellow warning bar for cancelled uploads
+            self._progress_widget.set_cancelled(success_count, original_total)
+            cancelled_count = original_total - success_count - failed_count - skipped_count
+        else:
+            self._progress_widget.set_completed(success_count, total, skipped_count, failed_count)
+            cancelled_count = 0
 
         self._log.log("", timestamp=False)
-        self._log.log("=== Upload Complete ===", timestamp=False)
-        self._log.log(f"Successful: {success_count}", timestamp=False)
-        if skipped_count > 0:
-            self._log.log(f"Skipped: {skipped_count}", timestamp=False)
-        self._log.log(f"Failed: {failed_count}", timestamp=False)
+        if was_cancelled:
+            self._log.log("=== Upload Cancelled ===", timestamp=False)
+            self._log.log(f"Successful: {success_count}", timestamp=False)
+            self._log.log(f"Cancelled: {cancelled_count}", timestamp=False)
+            self._log.log(f"Failed: {failed_count}", timestamp=False)
+        else:
+            self._log.log("=== Upload Complete ===", timestamp=False)
+            self._log.log(f"Successful: {success_count}", timestamp=False)
+            if skipped_count > 0:
+                self._log.log(f"Skipped: {skipped_count}", timestamp=False)
+            self._log.log(f"Failed: {failed_count}", timestamp=False)
 
         # Refresh history viewer and show it
         self._history_viewer.refresh()
