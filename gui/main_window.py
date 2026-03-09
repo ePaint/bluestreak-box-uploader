@@ -42,7 +42,7 @@ class MainWindow(QMainWindow):
         if icon_path.exists():
             self.setWindowIcon(QIcon(str(icon_path)))
         self.setMinimumSize(SIZES["window_min_w"], SIZES["window_min_h"])
-        self.resize(SIZES["window_default_w"], SIZES["window_default_h"])
+        self._restore_window_size()
 
         self._certifications: list[Certification] = []
         self._customer: Customer | None = None
@@ -582,3 +582,22 @@ class MainWindow(QMainWindow):
         # Re-enable collapse in narrow mode
         self._log_card.set_collapsible(True)
         self._is_wide_layout = False
+
+    def _restore_window_size(self) -> None:
+        """Restore window size from settings or use defaults."""
+        settings = load_settings()
+        width = settings.window_width
+        height = settings.window_height
+
+        if width and height:
+            self.resize(width, height)
+        else:
+            self.resize(SIZES["window_default_w"], SIZES["window_default_h"])
+
+    def closeEvent(self, event) -> None:
+        """Save window size on close."""
+        settings = load_settings()
+        settings.window_width = self.width()
+        settings.window_height = self.height()
+        save_settings(settings)
+        super().closeEvent(event)

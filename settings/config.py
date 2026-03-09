@@ -53,6 +53,8 @@ class Settings(BaseModel):
     # UI state (not shown in settings dialog)
     cert_table_column_widths: list[int] | None = None
     history_table_column_widths: list[int] | None = None
+    window_width: int | None = None
+    window_height: int | None = None
 
 
 def _get_app_data_dir() -> Path:
