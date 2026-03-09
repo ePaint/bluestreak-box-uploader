@@ -94,6 +94,11 @@ SIZES_BASE = {
 
     # Column defaults
     "col_cert": 140, "col_customer": 200, "col_po": 100, "col_date": 90, "col_files": 50,
+
+    # History columns
+    "hist_col_time": 60, "hist_col_order": 70, "hist_col_cert": 100,
+    "hist_col_customer": 120, "hist_col_po": 80, "hist_col_filename": 150,
+    "hist_col_status": 50, "hist_col_error": 120,
 }
 
 # Active spacing/radius/sizes (updated by set_ui_scale)
@@ -173,6 +178,8 @@ def get_stylesheet() -> str:
     """Generate the global application stylesheet."""
     # Get absolute path to checkmark asset (Qt requires forward slashes)
     checkmark_path = (ASSETS_DIR / "checkmark.png").resolve().as_posix()
+    dash_path = (ASSETS_DIR / "dash.png").resolve().as_posix()
+    arrow_down_path = (ASSETS_DIR / "arrow_down.png").resolve().as_posix()
 
     return f"""
         /* Global styles */
@@ -327,6 +334,7 @@ def get_stylesheet() -> str:
         QTableWidget::item {{
             padding: 8px;
             border-bottom: 1px solid {COLORS['border']};
+            font-size: {FONT_SIZE['md']}pt;
         }}
 
         QTableWidget::item:selected {{
@@ -486,6 +494,78 @@ def get_stylesheet() -> str:
             selection-color: #000000;
         }}
 
+        /* Date edit */
+        QDateEdit {{
+            background-color: {COLORS['surface']};
+            color: {COLORS['text']};
+            border: 1px solid {COLORS['border']};
+            border-radius: {RADIUS['md']}px;
+            padding: 6px 12px;
+            font-size: {FONT_SIZE['md']}pt;
+            min-height: {SIZES['combo_min_h']}px;
+        }}
+
+        QDateEdit:focus {{
+            border-color: {COLORS['accent']};
+        }}
+
+        QDateEdit:disabled {{
+            background-color: {COLORS['background']};
+            color: {COLORS['text_secondary']};
+        }}
+
+        QDateEdit::drop-down {{
+            subcontrol-origin: padding;
+            subcontrol-position: center right;
+            width: 20px;
+            border: none;
+        }}
+
+        QDateEdit::down-arrow {{
+            image: url({arrow_down_path});
+            width: 12px;
+            height: 12px;
+        }}
+
+        /* Calendar popup */
+        QCalendarWidget {{
+            background-color: {COLORS['surface']};
+            color: {COLORS['text']};
+        }}
+
+        QCalendarWidget QToolButton {{
+            background-color: {COLORS['surface']};
+            color: {COLORS['text']};
+            border: none;
+            padding: 4px;
+        }}
+
+        QCalendarWidget QToolButton:hover {{
+            background-color: {COLORS['surface_hover']};
+        }}
+
+        QCalendarWidget QMenu {{
+            background-color: {COLORS['surface']};
+            color: {COLORS['text']};
+        }}
+
+        QCalendarWidget QSpinBox {{
+            background-color: {COLORS['surface']};
+            color: {COLORS['text']};
+            border: 1px solid {COLORS['border']};
+        }}
+
+        QCalendarWidget QAbstractItemView:enabled {{
+            background-color: {COLORS['surface']};
+            color: {COLORS['text']};
+            selection-background-color: {COLORS['accent']};
+            selection-color: #000000;
+        }}
+
+        QCalendarWidget QWidget#qt_calendar_navigationbar {{
+            background-color: {COLORS['background']};
+        }}
+
         /* Slider */
         QSlider::groove:horizontal {{
             background-color: {COLORS['border']};
@@ -614,6 +694,7 @@ def get_stylesheet() -> str:
         QTreeWidget::item {{
             padding: {SPACING['xs']}px;
             min-height: {SIZES['tree_row_h']}px;
+            font-size: {FONT_SIZE['md']}pt;
         }}
         QTreeWidget::item:selected {{
             background: {COLORS['selection']};
@@ -636,6 +717,7 @@ def get_stylesheet() -> str:
         QTreeWidget::indicator:indeterminate {{
             background-color: {COLORS['accent']};
             border-color: {COLORS['accent']};
+            image: url({dash_path});
         }}
 
         /* Log viewer (QTextEdit#logViewer) */

@@ -31,6 +31,8 @@ class Customer:
     cst_id: int
     cst_name: str
     cst_integration_id: str | None  # Box folder ID
+    cst_on_credit_hold: str | None = None  # NOT NULL = on hold
+    cst_payment_terms_pyt_id: int | None = None  # 2 = COD
 
 
 @dataclass
@@ -85,4 +87,5 @@ class UploadHistoryRecord:
     status: str = "pending"
     error_msg: str | None = None
     customer_name: str | None = None
+    po_number: str | None = None
     file_size: int | None = None

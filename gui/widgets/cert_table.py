@@ -1,7 +1,7 @@
 """Certification tree with expandable rows and file selection."""
 
 from dataclasses import replace
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 from PySide6.QtCore import Qt, Signal
@@ -96,21 +96,19 @@ class CertificationTable(QWidget):
         """Add a widget to the toolbar row (after the stretch)."""
         self._btn_layout.addWidget(widget)
 
-    def set_certifications(
-        self, certifications: list[Certification], warning_days: int = 30
-    ) -> None:
+    def set_certifications(self, certifications: list[Certification]) -> None:
         """Set the certifications to display.
 
         Args:
             certifications: List of certifications to display
-            warning_days: Days threshold for warning styling (0 = disabled)
         """
         self._certifications = certifications
         self._tree.clear()
 
         # Pre-compute warning cutoff and brush (avoid creating inside loop)
+        warning_date = load_settings().cert_warning_date
         warning_cutoff = (
-            datetime.now() - timedelta(days=warning_days) if warning_days > 0 else None
+            datetime.combine(warning_date, datetime.min.time()) if warning_date else None
         )
         warning_brush = QBrush(QColor(COLORS["warning"])) if warning_cutoff else None
 
@@ -153,23 +151,22 @@ class CertificationTable(QWidget):
             )
             parent_item.setCheckState(0, Qt.CheckState.Unchecked)
 
-            # Check if certification is old and apply warning styling
+            # Check if certification was added before the warning date
             # Parse string dates (SQLite returns strings, SQL Server returns datetime)
-            cert_date = cert.crt_date
-            if isinstance(cert_date, str):
+            cert_added_date = cert.crt_added_date
+            if isinstance(cert_added_date, str):
                 try:
-                    cert_date = datetime.fromisoformat(cert_date)
+                    cert_added_date = datetime.fromisoformat(cert_added_date)
                 except ValueError:
-                    cert_date = None
+                    cert_added_date = None
 
-            if warning_brush and cert_date:
-                if cert_date < warning_cutoff:
+            if warning_brush and cert_added_date:
+                if cert_added_date < warning_cutoff:
                     for col in range(6):
                         parent_item.setForeground(col, warning_brush)
                     parent_item.setText(0, f"⚠ {cert.crt_cert_no}")
-                    age_days = (datetime.now() - cert_date).days
                     parent_item.setToolTip(
-                        0, f"Warning: This certification is {age_days} days old"
+                        0, "Warning: This certification was created before digital signing was implemented"
                     )
 
             # Add child items for each file
@@ -195,6 +192,11 @@ class CertificationTable(QWidget):
                 parent_item.addChild(child_item)
 
             self._tree.addTopLevelItem(parent_item)
+
+            # Make file rows span all columns so filename isn't truncated
+            parent_index = self._tree.indexFromItem(parent_item)
+            for i in range(parent_item.childCount()):
+                self._tree.setFirstColumnSpanned(i, parent_index, True)
 
         self.selection_changed.emit()
 
@@ -328,7 +330,7 @@ class CertificationTable(QWidget):
 
         if widths and len(widths) >= 6:
             for i, width in enumerate(widths[:6]):
-                self._tree.setColumnWidth(i, width)
+                self._tree.setColumnWidth(i, int(width))
         else:
             # Default widths
             self._tree.setColumnWidth(0, SIZES["col_cert"])
@@ -340,8 +342,8 @@ class CertificationTable(QWidget):
 
     def _on_column_resized(self, index: int, old_size: int, new_size: int) -> None:
         """Save column widths when user resizes."""
-        # Collect current widths
-        widths = [self._tree.columnWidth(i) for i in range(6)]
+        # Collect current widths (explicit int() to avoid Shiboken type issues)
+        widths = [int(self._tree.columnWidth(i)) for i in range(6)]
 
         # Save to settings
         settings = load_settings()

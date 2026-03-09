@@ -2,6 +2,7 @@
 
 import sys
 import tomllib
+from datetime import date
 from pathlib import Path
 from typing import Literal
 
@@ -38,10 +39,20 @@ class Settings(BaseModel):
     search_result_limit: int = Field(default=100, ge=10, le=1000)
 
     # Warning settings
-    warning_days_threshold: int = Field(default=30, ge=0, le=365)
+    # Certs created before this date trigger warning (None = disabled)
+    cert_warning_date: date | None = None
+
+    # Account status checks
+    check_credit_hold: bool = True
+    check_cod_terms: bool = True
+
+    # History settings
+    history_retention_days: int = Field(default=90, ge=0, le=3650)
+    # 0 = keep forever, otherwise days to keep
 
     # UI state (not shown in settings dialog)
     cert_table_column_widths: list[int] | None = None
+    history_table_column_widths: list[int] | None = None
 
 
 def _get_app_data_dir() -> Path:

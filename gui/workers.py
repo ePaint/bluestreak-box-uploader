@@ -229,6 +229,7 @@ class UploadWorker(QThread):
             status=status,
             error_msg=job.error_message,
             customer_name=self._customer_name,
+            po_number=cert.crt_po_number,
             file_size=file_size,
         )
         record_upload(history_record)

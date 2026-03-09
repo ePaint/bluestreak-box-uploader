@@ -1,10 +1,10 @@
 """Main application window with modern card-based layout."""
 
+from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QRegularExpression
 from PySide6.QtGui import QAction, QIcon, QKeySequence, QRegularExpressionValidator
-from PySide6.QtCore import QRegularExpression
 from PySide6.QtWidgets import (
     QMainWindow,
     QWidget,
@@ -54,6 +54,7 @@ class MainWindow(QMainWindow):
         self._setup_ui()
         # Don't load last order on startup - start with empty search field
         self._update_ui_state()
+        self._update_upload_button_state()
 
     def _setup_menu(self) -> None:
         menubar = self.menuBar()
@@ -84,9 +85,11 @@ class MainWindow(QMainWindow):
         lookup_layout = QHBoxLayout()
         lookup_layout.setSpacing(SPACING["sm"])
 
+        lookup_layout.addStretch()  # Center the input/button
+
         self._order_input = QLineEdit()
         self._order_input.setObjectName("orderInput")
-        self._order_input.setPlaceholderText("Enter 6-digit number")
+        self._order_input.setPlaceholderText("Enter BBI WO#")
         self._order_input.setMaxLength(6)
         self._order_input.setValidator(QRegularExpressionValidator(QRegularExpression(r"^\d{0,6}$")))
         self._order_input.returnPressed.connect(self._search_order)
@@ -106,7 +109,7 @@ class MainWindow(QMainWindow):
         self._search_btn.clicked.connect(self._search_order)
         lookup_layout.addWidget(self._search_btn, stretch=0)
 
-        lookup_layout.addStretch()  # Push elements to the left
+        lookup_layout.addStretch()  # Center the input/button
 
         lookup_card.add_layout(lookup_layout)
         layout.addWidget(lookup_card)
@@ -257,12 +260,18 @@ class MainWindow(QMainWindow):
         """Show settings dialog."""
         dialog = SettingsDialog(self)
         dialog.exec()
+        self._update_upload_button_state()
 
     def _on_auto_upload_changed(self, checked: bool) -> None:
         """Save auto-upload preference."""
         settings = load_settings()
         settings.auto_upload_single = checked
         save_settings(settings)
+
+    def _update_upload_button_state(self) -> None:
+        """Update upload button state after settings change."""
+        # Re-run full UI state update
+        self._update_ui_state()
 
     def _search_order(self) -> None:
         """Search for certifications by order ID (must be exactly 6 digits)."""
@@ -311,8 +320,7 @@ class MainWindow(QMainWindow):
             self._update_ui_state()
             return
 
-        settings = load_settings()
-        self._cert_table.set_certifications(certs, warning_days=settings.warning_days_threshold)
+        self._cert_table.set_certifications(certs)
 
         # Log results
         total_files = sum(len(c.media_files) for c in certs)
@@ -386,9 +394,73 @@ class MainWindow(QMainWindow):
                 self._show_settings()
             return
 
+        # Warn if cert warning date is not set
+        if settings.cert_warning_date is None:
+            reply = QMessageBox.warning(
+                self,
+                "Cert Warning Date Not Set",
+                "The Cert Warning Date is not configured. Old certifications "
+                "(created before digital signing) will not be flagged.\n\n"
+                "Do you want to proceed anyway?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                return
+
+        # Check for certs created before warning date
+        if settings.cert_warning_date:
+            warning_cutoff = datetime.combine(settings.cert_warning_date, datetime.min.time())
+            old_certs = []
+            for cert in selected:
+                cert_added_date = cert.crt_added_date
+                if isinstance(cert_added_date, str):
+                    try:
+                        cert_added_date = datetime.fromisoformat(cert_added_date)
+                    except ValueError:
+                        cert_added_date = None
+                if cert_added_date and cert_added_date < warning_cutoff:
+                    old_certs.append(cert.crt_cert_no)
+
+            if old_certs:
+                reply = QMessageBox.warning(
+                    self,
+                    "Certification Date Warning",
+                    "The following certification(s) were created before digital signing "
+                    "was implemented:\n\n"
+                    + "\n".join(f"  • {c}" for c in old_certs)
+                    + "\n\nUnless the automatically generated certification file has been "
+                    "manually replaced with a signed copy, the upload should be cancelled."
+                    "\n\nDo you want to proceed with the upload?",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No,
+                )
+                if reply != QMessageBox.StandardButton.Yes:
+                    return
+
+        # Check customer account status (credit hold / COD terms)
+        account_issues = []
+        if settings.check_credit_hold and self._customer.cst_on_credit_hold is not None:
+            account_issues.append("credit hold")
+        if settings.check_cod_terms and self._customer.cst_payment_terms_pyt_id == 2:
+            account_issues.append("COD payment terms")
+
+        if account_issues:
+            reply = QMessageBox.warning(
+                self,
+                "Account Status Warning",
+                f"This customer has: {', '.join(account_issues)}.\n\n"
+                "Have you confirmed with accounting that the customer's account "
+                "is in good standing and certifications have been authorized for release?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                return
+
         # Calculate totals and build cert info string
         total_files = sum(len(c.media_files) for c in selected)
-        cert_names = ", ".join(c.crt_cert_no for c in selected)
+        cert_names = ", ".join(f"Cert#{c.crt_cert_no}" for c in selected)
         if len(cert_names) > 50:
             cert_names = cert_names[:47] + "..."
         self._progress_widget.set_total(total_files, cert_info=cert_names)
@@ -457,8 +529,10 @@ class MainWindow(QMainWindow):
             self._log.log(f"Skipped: {skipped_count}", timestamp=False)
         self._log.log(f"Failed: {failed_count}", timestamp=False)
 
-        # Refresh history viewer to show new uploads
+        # Refresh history viewer and show it
         self._history_viewer.refresh()
+        self._log_card.expand()
+        self._log_tabs.setCurrentIndex(1)  # 0=Current, 1=History
 
         self._update_ui_state()
 

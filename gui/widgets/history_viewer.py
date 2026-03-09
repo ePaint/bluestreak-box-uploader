@@ -27,6 +27,7 @@ from database.history import (
 )
 from database.models import UploadHistoryRecord
 from gui.theme import COLORS, SPACING, SIZES
+from settings import load_settings, save_settings
 
 
 class HistoryViewer(QWidget):
@@ -70,24 +71,37 @@ class HistoryViewer(QWidget):
         self._refresh_btn.clicked.connect(self._load_history)
         toolbar.addWidget(self._refresh_btn)
 
+        self._clear_btn = QPushButton("Clear...")
+        self._clear_btn.setFixedWidth(SIZES["btn_w_xs"] - 10)
+        self._clear_btn.clicked.connect(self._on_clear_clicked)
+        toolbar.addWidget(self._clear_btn)
+
         layout.addLayout(toolbar)
 
         # Tree widget for grouped display
         self._tree = QTreeWidget()
-        self._tree.setHeaderLabels(["Time", "Order", "Cert", "Filename", "Status", "Error"])
+        self._tree.setHeaderLabels(["Time", "Order", "Cert", "Customer", "PO#", "Filename", "Status", "Error"])
         self._tree.setAlternatingRowColors(True)
         self._tree.setRootIsDecorated(True)
         self._tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self._tree.customContextMenuRequested.connect(self._show_context_menu)
 
-        # Column widths
+        # Column widths - all interactive for user resizing
         header = self._tree.header()
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(5, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Interactive)  # Time
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Interactive)  # Order
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Interactive)  # Cert
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Interactive)  # Customer
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Interactive)  # PO#
+        header.setSectionResizeMode(5, QHeaderView.ResizeMode.Interactive)  # Filename
+        header.setSectionResizeMode(6, QHeaderView.ResizeMode.Interactive)  # Status
+        header.setSectionResizeMode(7, QHeaderView.ResizeMode.Interactive)  # Error
+
+        # Restore saved widths
+        self._restore_column_widths()
+
+        # Save on resize
+        header.sectionResized.connect(self._on_column_resized)
 
         layout.addWidget(self._tree)
 
@@ -145,7 +159,7 @@ class HistoryViewer(QWidget):
             if fail_count > 0:
                 summary += f" ({fail_count} failed)"
 
-            date_item = QTreeWidgetItem([date_str, "", "", summary, "", ""])
+            date_item = QTreeWidgetItem([date_str, "", "", "", "", summary, "", ""])
             date_item.setFirstColumnSpanned(False)
             date_item.setExpanded(True)
             date_item.setData(0, Qt.ItemDataRole.UserRole, None)  # No session for date group
@@ -179,9 +193,11 @@ class HistoryViewer(QWidget):
                     session_time,
                     str(first.order_id),
                     "",
+                    first.customer_name or "",
+                    "",
                     session_summary,
                     "",
-                    first.customer_name or "",
+                    "",
                 ])
                 session_item.setData(0, Qt.ItemDataRole.UserRole, session_id)
                 session_item.setExpanded(False)
@@ -197,6 +213,8 @@ class HistoryViewer(QWidget):
                         time_str,
                         str(record.order_id),
                         record.cert_no,
+                        record.customer_name or "",
+                        record.po_number or "",
                         record.filename,
                         status_icon,
                         record.error_msg or "",
@@ -204,10 +222,10 @@ class HistoryViewer(QWidget):
 
                     # Color status
                     if record.status == "success":
-                        record_item.setForeground(4, QColor(COLORS["success"]))
+                        record_item.setForeground(6, QColor(COLORS["success"]))
                     else:
-                        record_item.setForeground(4, QColor(COLORS["error"]))
-                        record_item.setForeground(5, QColor(COLORS["error"]))
+                        record_item.setForeground(6, QColor(COLORS["error"]))
+                        record_item.setForeground(7, QColor(COLORS["error"]))
 
                     record_item.setData(0, Qt.ItemDataRole.UserRole, session_id)
                     session_item.addChild(record_item)
@@ -274,3 +292,44 @@ class HistoryViewer(QWidget):
     def refresh(self) -> None:
         """Public method to refresh history display."""
         self._load_history()
+
+    def _on_clear_clicked(self) -> None:
+        """Show clear history dialog."""
+        reply = QMessageBox.question(
+            self,
+            "Clear History",
+            "Clear all upload history?\n\nThis cannot be undone.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            from database.history import clear_all_history
+
+            count = clear_all_history()
+            self.refresh()
+
+    def _restore_column_widths(self) -> None:
+        """Restore column widths from settings or use defaults."""
+        settings = load_settings()
+        widths = settings.history_table_column_widths
+
+        if widths and len(widths) >= 8:
+            for i, width in enumerate(widths[:8]):
+                self._tree.setColumnWidth(i, int(width))
+        else:
+            self._tree.setColumnWidth(0, SIZES["hist_col_time"])
+            self._tree.setColumnWidth(1, SIZES["hist_col_order"])
+            self._tree.setColumnWidth(2, SIZES["hist_col_cert"])
+            self._tree.setColumnWidth(3, SIZES["hist_col_customer"])
+            self._tree.setColumnWidth(4, SIZES["hist_col_po"])
+            self._tree.setColumnWidth(5, SIZES["hist_col_filename"])
+            self._tree.setColumnWidth(6, SIZES["hist_col_status"])
+            self._tree.setColumnWidth(7, SIZES["hist_col_error"])
+
+    def _on_column_resized(self, index: int, old_size: int, new_size: int) -> None:
+        """Save column widths when user resizes."""
+        # Explicit int() to avoid Shiboken type issues
+        widths = [int(self._tree.columnWidth(i)) for i in range(8)]
+        settings = load_settings()
+        settings.history_table_column_widths = widths
+        save_settings(settings)

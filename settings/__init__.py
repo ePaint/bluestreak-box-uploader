@@ -1,5 +1,5 @@
 """Settings management for Bluestreak Box Uploader."""
 
-from settings.config import load_settings, save_settings, DEFAULT_SETTINGS
+from settings.config import Settings, load_settings, save_settings
 
-__all__ = ["load_settings", "save_settings", "DEFAULT_SETTINGS"]
+__all__ = ["Settings", "load_settings", "save_settings"]

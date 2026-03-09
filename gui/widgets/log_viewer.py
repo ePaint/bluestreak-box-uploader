@@ -4,7 +4,7 @@ from datetime import datetime
 
 from PySide6.QtWidgets import QTextEdit
 
-from gui.theme import COLORS, RADIUS, FONT_SIZE
+from gui.theme import COLORS
 
 
 class LogViewer(QTextEdit):
@@ -12,20 +12,8 @@ class LogViewer(QTextEdit):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setObjectName("logViewer")
         self.setReadOnly(True)
-        self.setStyleSheet(f"""
-            QTextEdit {{
-                background-color: {COLORS['background']};
-                color: {COLORS['text']};
-                border: 1px solid {COLORS['border']};
-                border-radius: {RADIUS['md']}px;
-                font-family: 'Cascadia Code', 'Consolas', 'Monaco', monospace;
-                font-size: {FONT_SIZE['md']}pt;
-                padding: 8px;
-                selection-background-color: {COLORS['accent']};
-                selection-color: #000000;
-            }}
-        """)
 
     def log(self, message: str, timestamp: bool = True) -> None:
         """Append a log message."""

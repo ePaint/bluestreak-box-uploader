@@ -14,7 +14,9 @@ WITH CTE_Cert AS (
         crt_cstID,
         crtPONumber,
         crtID,
-        crt_orID
+        crt_orID,
+        crtDate,
+        crtAddedDate
     FROM Certification
     WHERE crt_orID = @OrderID
 ),
@@ -54,7 +56,9 @@ SELECT
     mx.medxID,
     m.medID,
     m.medDescription,
-    m.medFullPath
+    m.medFullPath,
+    c.crtDate,
+    c.crtAddedDate
 FROM CTE_Cert c
 LEFT JOIN CTE_Note n ON n.not_crtID = c.crtID
 LEFT JOIN CTE_MediaXref mx ON mx.medx_notID = n.notID OR mx.medx_crtID = c.crtID
@@ -66,7 +70,9 @@ CUSTOMER_QUERY = """
 SELECT
     cstID,
     cstName,
-    cstIntegrationID
+    cstIntegrationID,
+    cstOnCreditHold,
+    cstPaymentTerms_pytID
 FROM Customer
 WHERE cstID = @CustomerID
 """
@@ -86,7 +92,9 @@ CTE_Cert AS (
         crt_cstID,
         crtPONumber,
         crtID,
-        crt_orID
+        crt_orID,
+        crtDate,
+        crtAddedDate
     FROM Certification
     WHERE crt_orID IN (SELECT crt_orID FROM CTE_Orders)
 ),
@@ -126,7 +134,9 @@ SELECT
     mx.medxID,
     m.medID,
     m.medDescription,
-    m.medFullPath
+    m.medFullPath,
+    c.crtDate,
+    c.crtAddedDate
 FROM CTE_Cert c
 LEFT JOIN CTE_Note n ON n.not_crtID = c.crtID
 LEFT JOIN CTE_MediaXref mx ON mx.medx_notID = n.notID OR mx.medx_crtID = c.crtID
@@ -149,7 +159,9 @@ CTE_Cert AS (
         crt_cstID,
         crtPONumber,
         crtID,
-        crt_orID
+        crt_orID,
+        crtDate,
+        crtAddedDate
     FROM Certification
     WHERE crt_orID IN (SELECT crt_orID FROM CTE_Orders)
 ),
@@ -189,7 +201,9 @@ SELECT
     mx.medxID,
     m.medID,
     m.medDescription,
-    m.medFullPath
+    m.medFullPath,
+    c.crtDate,
+    c.crtAddedDate
 FROM CTE_Cert c
 LEFT JOIN CTE_Note n ON n.not_crtID = c.crtID
 LEFT JOIN CTE_MediaXref mx ON mx.medx_notID = n.notID OR mx.medx_crtID = c.crtID
@@ -222,6 +236,8 @@ def query_certifications_by_order(
                 crt_cst_id=row[2],  # crt_cstID
                 crt_po_number=row[3],  # crtPONumber
                 crt_or_id=row[5],  # crt_orID
+                crt_date=row[11],  # crtDate
+                crt_added_date=row[12],  # crtAddedDate
                 media_files=[],
             )
 
@@ -257,6 +273,8 @@ def get_customer_by_id(conn: DatabaseConnection, customer_id: int) -> Customer |
         cst_id=row[0],
         cst_name=row[1],
         cst_integration_id=row[2],
+        cst_on_credit_hold=row[3],
+        cst_payment_terms_pyt_id=row[4],
     )
 
 
@@ -320,6 +338,8 @@ def query_certifications_by_partial_order(
                 crt_cst_id=row[2],  # crt_cstID
                 crt_po_number=row[3],  # crtPONumber
                 crt_or_id=row[5],  # crt_orID
+                crt_date=row[11],  # crtDate
+                crt_added_date=row[12],  # crtAddedDate
                 media_files=[],
             )
 

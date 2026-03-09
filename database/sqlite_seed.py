@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS Certification (
     crtID INTEGER PRIMARY KEY AUTOINCREMENT,
     crtCertNo VARCHAR(25) NOT NULL,
     crtDate DATETIME NOT NULL,
+    crtAddedDate DATETIME,
     crtVersion SMALLINT NOT NULL DEFAULT 1,
     crt_cstID INTEGER NOT NULL,
     crt_orID INTEGER NOT NULL,
@@ -82,7 +83,7 @@ def seed_database(db_path: str | Path) -> None:
     # Insert customer - Burton Industries (cstID=1916, with Box integration)
     cursor.execute("""
         INSERT INTO Customer (cstID, cstName, cstListName, cstIntegrationID, cstIsActive)
-        VALUES (1916, 'Burton Industries Inc.', 'Burton Industries', NULL, 1)
+        VALUES (1916, 'Burton Industries Inc.', 'Burton Industries', '366380413888', 1)
     """)
 
     # Insert customer without Box integration for testing warnings
@@ -104,9 +105,9 @@ def seed_database(db_path: str | Path) -> None:
 
     for crt in certs_data:
         cursor.execute("""
-            INSERT INTO Certification (crtID, crtCertNo, crtDate, crt_cstID, crt_orID, crtPONumber,
+            INSERT INTO Certification (crtID, crtCertNo, crtDate, crtAddedDate, crt_cstID, crt_orID, crtPONumber,
                                        crtCustName, crtAddress1, crtCity, crtStateProvince, crtPostalCode)
-            VALUES (?, ?, datetime('now'), ?, ?, ?, ?, '243 Wyandanch Ave', ?, ?, ?)
+            VALUES (?, ?, datetime('now'), datetime('now', '-1 day'), ?, ?, ?, ?, '243 Wyandanch Ave', ?, ?, ?)
         """, crt)
 
     # Insert notes for certifications (one per cert for media linking)

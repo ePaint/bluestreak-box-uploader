@@ -1,7 +1,12 @@
 """Application entry point with modern theme support."""
 
 import sys
+import os
 from pathlib import Path
+
+# Suppress Shiboken conversion warnings in PySide6 6.10.x
+# See: https://github.com/angr/angr-management/issues/1514
+os.environ.setdefault("QT_LOGGING_RULES", "qt.pysideplugin.warning=false")
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPalette, QColor, QIcon
@@ -103,8 +108,11 @@ def launch_app() -> int:
 
     apply_theme(app)
 
-    # Initialize history database
+    # Initialize history database and cleanup old entries
     init_history_db()
+    from database.history import cleanup_old_history
+
+    cleanup_old_history()
 
     window = MainWindow()
     window.show()
