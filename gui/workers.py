@@ -175,7 +175,9 @@ class UploadWorker(QThread):
                         elif action == DuplicateAction.CANCEL:
                             self.cancel()
                             break
-                        # else REPLACE - proceed with upload
+                        elif action == DuplicateAction.REPLACE:
+                            # Delete existing file first, then upload fresh
+                            uploader.delete_file(existing_file_id)
 
                     # Upload file
                     uploaded = uploader.upload_file(local_path, target_folder_id)

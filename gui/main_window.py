@@ -227,7 +227,7 @@ class MainWindow(QMainWindow):
     def _update_ui_state(self) -> None:
         """Update button states based on current selection."""
         has_selection = self._cert_table.get_selected_count() > 0
-        has_box_mapping = self._customer is not None and self._customer.cst_integration_id is not None
+        has_box_mapping = self._customer is not None and bool(self._customer.cst_integration_id)
         is_processing = (
             (self._query_worker is not None and self._query_worker.isRunning())
             or (self._upload_worker is not None and self._upload_worker.isRunning())
@@ -247,7 +247,7 @@ class MainWindow(QMainWindow):
             self._certs_card.set_badge("")
 
         # Update warning visibility
-        if self._customer is not None and self._customer.cst_integration_id is None:
+        if self._customer is not None and not self._customer.cst_integration_id:
             self._warning_label.setText(
                 f"\u26A0  Customer '{self._customer.cst_name}' is not mapped to a Box folder. "
                 "Set cstIntegrationID in the database to enable uploads."
@@ -360,7 +360,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "No Selection", "Please select certifications to upload.")
             return
 
-        if self._customer is None or self._customer.cst_integration_id is None:
+        if self._customer is None or not self._customer.cst_integration_id:
             QMessageBox.warning(
                 self,
                 "Box Folder Not Configured",

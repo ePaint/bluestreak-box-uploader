@@ -60,6 +60,10 @@ class BoxUploader:
                 return item.id
         return None
 
+    def delete_file(self, file_id: str) -> None:
+        """Delete a file from Box by its ID."""
+        _retry_on_jti_error(self.client.files.delete_file_by_id, file_id)
+
     def get_current_user(self) -> UserFull:
         """Get the current authenticated user."""
         return self.client.users.get_user_me()
