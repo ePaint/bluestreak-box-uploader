@@ -126,6 +126,10 @@ class Card(QFrame):
         """Get the content layout to add widgets."""
         return self._content_layout
 
+    def set_content_margins(self, left: int, top: int, right: int, bottom: int) -> None:
+        """Set the card's content margins."""
+        self._main_layout.setContentsMargins(left, top, right, bottom)
+
     def add_widget(self, widget: QWidget) -> None:
         """Add a widget to the card content area."""
         self._content_layout.addWidget(widget)

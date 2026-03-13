@@ -148,7 +148,7 @@ class HistoryViewer(QWidget):
         # Sort dates newest first
         sorted_dates = sorted(grouped.keys(), reverse=True)
 
-        for record_date in sorted_dates:
+        for idx, record_date in enumerate(sorted_dates):
             date_records = grouped[record_date]
 
             # Create date group item
@@ -161,7 +161,6 @@ class HistoryViewer(QWidget):
 
             date_item = QTreeWidgetItem([date_str, "", "", "", "", summary, "", ""])
             date_item.setFirstColumnSpanned(False)
-            date_item.setExpanded(True)
             date_item.setData(0, Qt.ItemDataRole.UserRole, None)  # No session for date group
 
             # Style the date header
@@ -171,6 +170,7 @@ class HistoryViewer(QWidget):
             date_item.setForeground(0, QColor(COLORS["accent"]))
 
             self._tree.addTopLevelItem(date_item)
+            date_item.setExpanded(idx == 0)  # Only expand most recent date (must be after addTopLevelItem)
 
             # Group by session within date
             sessions: dict[str, list[UploadHistoryRecord]] = {}

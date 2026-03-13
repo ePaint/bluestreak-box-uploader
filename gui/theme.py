@@ -686,6 +686,9 @@ def get_stylesheet() -> str:
             background-color: {COLORS['surface_hover']};
             border-color: {COLORS['accent']};
         }}
+        Card#lookupCard {{
+            padding: {SPACING['sm']}px {SPACING['xs']}px;
+        }}
 
         /* Tree widgets (QTreeWidget common style) */
         QTreeWidget {{
@@ -717,7 +720,7 @@ def get_stylesheet() -> str:
             image: url({checkmark_path});
         }}
         QTreeWidget::indicator:indeterminate {{
-            background-color: {COLORS['accent']};
+            background-color: {COLORS['surface']};
             border-color: {COLORS['accent']};
             image: url({dash_path});
         }}

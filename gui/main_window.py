@@ -80,12 +80,12 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(SPACING["lg"], SPACING["lg"], SPACING["lg"], SPACING["lg"])
         layout.setSpacing(SPACING["md"])
 
-        # Order Lookup Card
+        # Order Lookup Card (centered, compact)
         lookup_card = Card(title="ORDER LOOKUP", icon=get_icon("search"))
+        lookup_card.setObjectName("lookupCard")
         lookup_layout = QHBoxLayout()
+        lookup_layout.setContentsMargins(0, 0, 0, 0)
         lookup_layout.setSpacing(SPACING["sm"])
-
-        lookup_layout.addStretch()  # Center the input/button
 
         self._order_input = QLineEdit()
         self._order_input.setObjectName("orderInput")
@@ -109,10 +109,15 @@ class MainWindow(QMainWindow):
         self._search_btn.clicked.connect(self._search_order)
         lookup_layout.addWidget(self._search_btn, stretch=0)
 
-        lookup_layout.addStretch()  # Center the input/button
-
         lookup_card.add_layout(lookup_layout)
-        layout.addWidget(lookup_card)
+
+        # Center the card (don't stretch to full width)
+        lookup_row = QHBoxLayout()
+        lookup_row.setContentsMargins(0, 0, 0, 0)
+        lookup_row.addStretch()
+        lookup_row.addWidget(lookup_card)
+        lookup_row.addStretch()
+        layout.addLayout(lookup_row)
 
         # Middle container (holds everything between Order Lookup and buttons)
         self._middle_container = QWidget()
@@ -446,10 +451,11 @@ class MainWindow(QMainWindow):
             account_issues.append("COD payment terms")
 
         if account_issues:
+            issues_text = "\n".join(f"  • {issue}" for issue in account_issues)
             reply = QMessageBox.warning(
                 self,
                 "Account Status Warning",
-                f"This customer has: {', '.join(account_issues)}.\n\n"
+                f"This customer has:\n{issues_text}\n\n"
                 "Have you confirmed with accounting that the customer's account "
                 "is in good standing and certifications have been authorized for release?",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,

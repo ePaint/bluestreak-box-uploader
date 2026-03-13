@@ -120,6 +120,7 @@ class SettingsDialog(QDialog):
         # Theme selection
         self._theme_combo = QComboBox()
         self._theme_combo.addItems(["dark", "light"])
+        self._theme_combo.setMinimumWidth(SIZES["filter_w"])
         layout.addRow(
             self._create_label_with_info("Theme:", "Application color theme. Requires restart to take effect."),
             self._theme_combo
@@ -138,7 +139,7 @@ class SettingsDialog(QDialog):
         font_size_layout.addWidget(self._font_size_slider)
 
         self._font_size_label = QLabel("10 pt")
-        self._font_size_label.setMinimumWidth(SIZES["label_min_w"])
+        self._font_size_label.setMinimumWidth(50)  # Fits "16 pt" with alignment
         font_size_layout.addWidget(self._font_size_label)
 
         layout.addRow(
@@ -149,6 +150,7 @@ class SettingsDialog(QDialog):
         # UI Scale dropdown
         self._scale_combo = QComboBox()
         self._scale_combo.addItems(["100%", "125%", "150%"])
+        self._scale_combo.setMinimumWidth(SIZES["filter_w"])
         layout.addRow(
             self._create_label_with_info("UI Scale:", "Scale all UI elements (100%, 125%, 150%). Requires restart to take effect."),
             self._scale_combo
