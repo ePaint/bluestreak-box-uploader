@@ -94,8 +94,8 @@ if sys.platform == 'darwin':
         info_plist={
             'CFBundleName': 'Bluestreak Box Uploader',
             'CFBundleDisplayName': 'Bluestreak Box Uploader',
-            'CFBundleShortVersionString': '0.1.7',
-            'CFBundleVersion': '0.1.7',
+            'CFBundleShortVersionString': '0.1.8',
+            'CFBundleVersion': '0.1.8',
             'NSHighResolutionCapable': True,
             'LSMinimumSystemVersion': '10.15',
         },
