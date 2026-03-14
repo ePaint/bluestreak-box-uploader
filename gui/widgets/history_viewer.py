@@ -26,7 +26,7 @@ from database.history import (
     export_history_to_csv,
 )
 from database.models import UploadHistoryRecord
-from gui.theme import COLORS, SPACING, SIZES
+from gui.theme import COLORS, FONT_SIZE, SPACING, SIZES
 from settings import load_settings, save_settings
 
 
@@ -51,28 +51,25 @@ class HistoryViewer(QWidget):
         toolbar.setSpacing(SPACING["sm"])
 
         self._search_input = QLineEdit()
+        self._search_input.setClearButtonEnabled(True)
         self._search_input.setPlaceholderText("Search by order, cert, filename...")
         self._search_input.textChanged.connect(self._on_search_changed)
         toolbar.addWidget(self._search_input, stretch=1)
 
         self._status_filter = QComboBox()
         self._status_filter.addItems(["All", "Success", "Failed"])
-        self._status_filter.setFixedWidth(SIZES["filter_w"])
         self._status_filter.currentTextChanged.connect(self._on_filter_changed)
         toolbar.addWidget(self._status_filter)
 
         self._export_btn = QPushButton("Export CSV")
-        self._export_btn.setFixedWidth(SIZES["filter_w"])
         self._export_btn.clicked.connect(self._export_all)
         toolbar.addWidget(self._export_btn)
 
         self._refresh_btn = QPushButton("Refresh")
-        self._refresh_btn.setFixedWidth(SIZES["btn_w_xs"] - 10)
         self._refresh_btn.clicked.connect(self._load_history)
         toolbar.addWidget(self._refresh_btn)
 
         self._clear_btn = QPushButton("Clear...")
-        self._clear_btn.setFixedWidth(SIZES["btn_w_xs"] - 10)
         self._clear_btn.clicked.connect(self._on_clear_clicked)
         toolbar.addWidget(self._clear_btn)
 
@@ -80,6 +77,7 @@ class HistoryViewer(QWidget):
 
         # Tree widget for grouped display
         self._tree = QTreeWidget()
+        self._tree.setObjectName("historyTree")  # For denser row styling
         self._tree.setHeaderLabels(["Time", "Order", "Cert", "Customer", "PO#", "Filename", "Status", "Error"])
         self._tree.setAlternatingRowColors(True)
         self._tree.setRootIsDecorated(True)
@@ -88,6 +86,10 @@ class HistoryViewer(QWidget):
 
         # Column widths - all interactive for user resizing
         header = self._tree.header()
+        # Set header font size programmatically (stylesheet may not apply on Windows)
+        header_font = header.font()
+        header_font.setPointSize(FONT_SIZE["sm"])
+        header.setFont(header_font)
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Interactive)  # Time
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.Interactive)  # Order
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.Interactive)  # Cert
@@ -124,9 +126,9 @@ class HistoryViewer(QWidget):
         status = status_text.lower() if status_text != "All" else None
 
         records = search_history(query=query, status=status, limit=500)
-        self._display_records(records)
+        self._display_records(records, is_searching=bool(query))
 
-    def _display_records(self, records: list[UploadHistoryRecord]) -> None:
+    def _display_records(self, records: list[UploadHistoryRecord], is_searching: bool = False) -> None:
         """Display records grouped by date."""
         self._tree.clear()
 
@@ -170,7 +172,8 @@ class HistoryViewer(QWidget):
             date_item.setForeground(0, QColor(COLORS["accent"]))
 
             self._tree.addTopLevelItem(date_item)
-            date_item.setExpanded(idx == 0)  # Only expand most recent date (must be after addTopLevelItem)
+            # Expand all when searching, only most recent when not searching
+            date_item.setExpanded(is_searching or idx == 0)
 
             # Group by session within date
             sessions: dict[str, list[UploadHistoryRecord]] = {}
@@ -200,7 +203,7 @@ class HistoryViewer(QWidget):
                     "",
                 ])
                 session_item.setData(0, Qt.ItemDataRole.UserRole, session_id)
-                session_item.setExpanded(False)
+                session_item.setExpanded(is_searching)
 
                 date_item.addChild(session_item)
 

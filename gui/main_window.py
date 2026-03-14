@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QRegularExpression
-from PySide6.QtGui import QAction, QIcon, QKeySequence, QRegularExpressionValidator
+from PySide6.QtGui import QAction, QFont, QIcon, QKeySequence, QRegularExpressionValidator
 from PySide6.QtWidgets import (
     QMainWindow,
     QWidget,
@@ -26,10 +26,10 @@ from settings import load_settings, save_settings
 from settings.config import get_database_config
 from gui.widgets import CertificationTable, HistoryViewer, LogViewer, UploadProgressWidget
 from gui.widgets.card import Card
-from gui.dialogs import DuplicateFileDialog
+from gui.dialogs import AboutDialog, DuplicateFileDialog, WarningDialog
 from gui.settings_dialog import SettingsDialog
 from gui.workers import QueryWorker, PartialQueryWorker, UploadWorker
-from gui.theme import COLORS, SPACING, SIZES, get_icon
+from gui.theme import COLORS, FONT_SIZE, SPACING, SIZES, get_icon
 
 
 class MainWindow(QMainWindow):
@@ -59,12 +59,21 @@ class MainWindow(QMainWindow):
     def _setup_menu(self) -> None:
         menubar = self.menuBar()
 
+        # Set font size programmatically (stylesheet may not apply on Windows)
+        font = menubar.font()
+        font.setPointSize(FONT_SIZE["md"])
+        menubar.setFont(font)
+
         file_menu = menubar.addMenu("File")
 
         settings_action = QAction("Settings...", self)
         settings_action.setShortcut(QKeySequence("Ctrl+,"))
         settings_action.triggered.connect(self._show_settings)
         file_menu.addAction(settings_action)
+
+        about_action = QAction("About...", self)
+        about_action.triggered.connect(self._show_about)
+        file_menu.addAction(about_action)
 
         file_menu.addSeparator()
 
@@ -267,6 +276,11 @@ class MainWindow(QMainWindow):
         dialog.exec()
         self._update_upload_button_state()
 
+    def _show_about(self) -> None:
+        """Show about dialog."""
+        dialog = AboutDialog(self)
+        dialog.exec()
+
     def _on_auto_upload_changed(self, checked: bool) -> None:
         """Save auto-upload preference."""
         settings = load_settings()
@@ -401,16 +415,14 @@ class MainWindow(QMainWindow):
 
         # Warn if cert warning date is not set
         if settings.cert_warning_date is None:
-            reply = QMessageBox.warning(
-                self,
+            dialog = WarningDialog(
                 "Cert Warning Date Not Set",
                 "The Cert Warning Date is not configured. Old certifications "
                 "(created before digital signing) will not be flagged.\n\n"
                 "Do you want to proceed anyway?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No,
+                self,
             )
-            if reply != QMessageBox.StandardButton.Yes:
+            if not dialog.exec():
                 return
 
         # Check for certs created before warning date
@@ -428,8 +440,7 @@ class MainWindow(QMainWindow):
                     old_certs.append(cert.crt_cert_no)
 
             if old_certs:
-                reply = QMessageBox.warning(
-                    self,
+                dialog = WarningDialog(
                     "Certification Date Warning",
                     "The following certification(s) were created before digital signing "
                     "was implemented:\n\n"
@@ -437,10 +448,9 @@ class MainWindow(QMainWindow):
                     + "\n\nUnless the automatically generated certification file has been "
                     "manually replaced with a signed copy, the upload should be cancelled."
                     "\n\nDo you want to proceed with the upload?",
-                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                    QMessageBox.StandardButton.No,
+                    self,
                 )
-                if reply != QMessageBox.StandardButton.Yes:
+                if not dialog.exec():
                     return
 
         # Check customer account status (credit hold / COD terms)
@@ -452,16 +462,14 @@ class MainWindow(QMainWindow):
 
         if account_issues:
             issues_text = "\n".join(f"  • {issue}" for issue in account_issues)
-            reply = QMessageBox.warning(
-                self,
+            dialog = WarningDialog(
                 "Account Status Warning",
                 f"This customer has:\n{issues_text}\n\n"
                 "Have you confirmed with accounting that the customer's account "
                 "is in good standing and certifications have been authorized for release?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No,
+                self,
             )
-            if reply != QMessageBox.StandardButton.Yes:
+            if not dialog.exec():
                 return
 
         # Calculate totals and build cert info string

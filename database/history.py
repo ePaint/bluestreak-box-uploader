@@ -101,6 +101,7 @@ def record_upload(record: UploadHistoryRecord) -> int:
 
 def _row_to_record(row: tuple) -> UploadHistoryRecord:
     """Convert a database row to UploadHistoryRecord."""
+    # Note: po_number was added via ALTER TABLE migration, so it's at index 11
     return UploadHistoryRecord(
         id=row[0],
         session_id=row[1],
@@ -112,8 +113,8 @@ def _row_to_record(row: tuple) -> UploadHistoryRecord:
         status=row[7],
         error_msg=row[8],
         customer_name=row[9],
-        po_number=row[10],
-        file_size=row[11],
+        file_size=row[10],
+        po_number=row[11] if len(row) > 11 else None,
     )
 
 

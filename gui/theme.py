@@ -476,7 +476,6 @@ def get_stylesheet() -> str:
             border-radius: {RADIUS['md']}px;
             padding: 6px 12px;
             font-size: {FONT_SIZE['md']}pt;
-            min-height: {SIZES['combo_min_h']}px;
         }}
 
         QComboBox:focus {{
@@ -504,7 +503,6 @@ def get_stylesheet() -> str:
             border-radius: {RADIUS['md']}px;
             padding: 6px 12px;
             font-size: {FONT_SIZE['md']}pt;
-            min-height: {SIZES['combo_min_h']}px;
         }}
 
         QDateEdit:focus {{
@@ -625,6 +623,7 @@ def get_stylesheet() -> str:
             border: none;
             border-bottom: 2px solid transparent;
             padding: 8px 16px;
+            font-size: {FONT_SIZE['md']}pt;
         }}
         QTabWidget#logTabs QTabBar::tab:selected {{
             color: {COLORS['accent']};
@@ -695,6 +694,7 @@ def get_stylesheet() -> str:
             background: {COLORS['background']};
             border: 1px solid {COLORS['border']};
             border-radius: {RADIUS['md']}px;
+            font-size: {FONT_SIZE['md']}pt;
         }}
         QTreeWidget::item {{
             padding: {SPACING['xs']}px;
@@ -703,6 +703,12 @@ def get_stylesheet() -> str:
         }}
         QTreeWidget::item:selected {{
             background: {COLORS['selection']};
+        }}
+        /* Denser rows for history viewer */
+        QTreeWidget#historyTree::item {{
+            padding: 2px;
+            min-height: 22px;
+            font-size: {FONT_SIZE['md']}pt;
         }}
         QTreeWidget::indicator {{
             width: {SIZES['checkbox']}px;
@@ -731,6 +737,7 @@ def get_stylesheet() -> str:
             border: 1px solid {COLORS['border']};
             border-radius: {RADIUS['md']}px;
             font-family: 'Cascadia Code', 'Consolas', monospace;
+            font-size: {FONT_SIZE['md']}pt;
             padding: 8px;
         }}
 
@@ -784,6 +791,31 @@ def get_stylesheet() -> str:
             padding: 8px;
             background: {COLORS['background']};
             border-radius: {RADIUS['sm']}px;
+        }}
+
+        /* About dialog */
+        QLabel#aboutTitle {{
+            font-size: {FONT_SIZE['xl']}pt;
+            font-weight: bold;
+        }}
+        QLabel#aboutVersion {{
+            font-size: {FONT_SIZE['md']}pt;
+            color: {COLORS['text_secondary']};
+        }}
+        QLabel#aboutInfo {{
+            font-size: {FONT_SIZE['sm']}pt;
+            color: {COLORS['text_secondary']};
+        }}
+
+        /* Warning dialog */
+        QLabel#warningTitle {{
+            font-size: {FONT_SIZE['lg']}pt;
+            font-weight: bold;
+            color: {COLORS['warning']};
+        }}
+        QLabel#warningMessage {{
+            font-size: {FONT_SIZE['md']}pt;
+            padding: {SPACING['sm']}px 0;
         }}
     """
 

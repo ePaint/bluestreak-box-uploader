@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
 )
 
 from database.models import Certification, MediaFile
-from gui.theme import COLORS, SPACING, SIZES
+from gui.theme import COLORS, FONT_SIZE, SPACING, SIZES
 from settings import load_settings, save_settings
 
 
@@ -48,6 +48,10 @@ class CertificationTable(QWidget):
 
         # Column sizing
         header = self._tree.header()
+        # Set header font size programmatically (stylesheet may not apply on Windows)
+        header_font = header.font()
+        header_font.setPointSize(FONT_SIZE["sm"])
+        header.setFont(header_font)
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Interactive)  # Cert No
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.Interactive)  # Customer
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.Interactive)  # PO#

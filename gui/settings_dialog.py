@@ -139,7 +139,7 @@ class SettingsDialog(QDialog):
         font_size_layout.addWidget(self._font_size_slider)
 
         self._font_size_label = QLabel("10 pt")
-        self._font_size_label.setMinimumWidth(50)  # Fits "16 pt" with alignment
+        self._font_size_label.setMinimumWidth(60)  # Fits "16 pt" at larger font sizes
         font_size_layout.addWidget(self._font_size_label)
 
         layout.addRow(
@@ -168,8 +168,6 @@ class SettingsDialog(QDialog):
         cert_date_layout.addWidget(self._cert_warning_date)
 
         self._cert_warning_clear = QPushButton("Unset")
-        self._cert_warning_clear.setFixedWidth(70)
-        self._cert_warning_clear.setMaximumHeight(SIZES["btn_max_h"])
         self._cert_warning_clear.clicked.connect(self._toggle_cert_warning_date)
         cert_date_layout.addWidget(self._cert_warning_clear)
 
@@ -187,7 +185,7 @@ class SettingsDialog(QDialog):
         credit_hold_layout = QHBoxLayout(credit_hold_container)
         credit_hold_layout.setContentsMargins(0, 0, 0, 0)
         credit_hold_layout.setSpacing(4)
-        self._check_credit_hold = QCheckBox("Check for Credit Hold")
+        self._check_credit_hold = QCheckBox("Enable Credit Hold Warning")
         credit_hold_layout.addWidget(self._check_credit_hold)
         credit_hold_layout.addWidget(self._create_info_icon(
             "Show warning before uploading if customer has credit hold status."
@@ -199,7 +197,7 @@ class SettingsDialog(QDialog):
         cod_terms_layout = QHBoxLayout(cod_terms_container)
         cod_terms_layout.setContentsMargins(0, 0, 0, 0)
         cod_terms_layout.setSpacing(4)
-        self._check_cod_terms = QCheckBox("Check for COD Payment Terms")
+        self._check_cod_terms = QCheckBox("Enable COD Payment Terms Warning")
         cod_terms_layout.addWidget(self._check_cod_terms)
         cod_terms_layout.addWidget(self._create_info_icon(
             "Show warning before uploading if customer has COD payment terms."
@@ -272,7 +270,6 @@ class SettingsDialog(QDialog):
         self._db_sqlite_path.setPlaceholderText("Path to SQLite database")
         sqlite_layout.addWidget(self._db_sqlite_path)
         self._db_sqlite_browse = QPushButton("Browse...")
-        self._db_sqlite_browse.setMaximumHeight(SIZES["btn_max_h"])
         self._db_sqlite_browse.clicked.connect(self._browse_sqlite)
         sqlite_layout.addWidget(self._db_sqlite_browse)
         layout.addRow(
@@ -308,7 +305,6 @@ class SettingsDialog(QDialog):
         self._box_jwt_path.setPlaceholderText("Path to Box JWT config JSON file")
         jwt_layout.addWidget(self._box_jwt_path)
         self._box_jwt_browse = QPushButton("Browse...")
-        self._box_jwt_browse.setMaximumHeight(SIZES["btn_max_h"])
         self._box_jwt_browse.clicked.connect(self._browse_jwt)
         jwt_layout.addWidget(self._box_jwt_browse)
         layout.addRow(
@@ -338,7 +334,6 @@ class SettingsDialog(QDialog):
         self._media_base_path.setPlaceholderText(r"e.g., D:\inetpub\wwwroot\Bluestreak\Media")
         media_layout.addWidget(self._media_base_path)
         self._media_browse = QPushButton("Browse...")
-        self._media_browse.setMaximumHeight(SIZES["btn_max_h"])
         self._media_browse.clicked.connect(self._browse_media)
         media_layout.addWidget(self._media_browse)
         layout.addRow(
