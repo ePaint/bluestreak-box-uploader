@@ -88,10 +88,13 @@ class TestFolderManager:
         manager = FolderManager(mock_client)
 
         # Pre-populate cache to avoid API calls
-        manager._cache["root"] = {"PO#TEST (BII WO#444337)": "order123"}
+        manager._cache["root"] = {"Certifications": "certs1"}
+        manager._cache["certs1"] = {"PO#TEST (BII WO#444337)": "order123"}
         manager._cache["order123"] = {"Cert#444337-1": "cert123"}
 
-        result = manager.ensure_folder_path("root", "PO#TEST (BII WO#444337)/Cert#444337-1")
+        result = manager.ensure_folder_path(
+            "root", "Certifications/PO#TEST (BII WO#444337)/Cert#444337-1"
+        )
 
         assert result == "cert123"
 
@@ -119,9 +122,9 @@ class TestFolderPath:
             parent_folder = f"PO#{po_number} (BII WO#{order_id})"
         else:
             parent_folder = f"BII WO#{order_id}"
-        path = f"{parent_folder}/Cert#{cert_no}"
+        path = f"Certifications/{parent_folder}/Cert#{cert_no}"
 
-        assert path == "PO#TEST123 (BII WO#444337)/Cert#444337-1"
+        assert path == "Certifications/PO#TEST123 (BII WO#444337)/Cert#444337-1"
 
     def test_folder_path_without_po(self):
         """Test folder path construction without PO number."""
@@ -133,6 +136,6 @@ class TestFolderPath:
             parent_folder = f"PO#{po_number} (BII WO#{order_id})"
         else:
             parent_folder = f"BII WO#{order_id}"
-        path = f"{parent_folder}/Cert#{cert_no}"
+        path = f"Certifications/{parent_folder}/Cert#{cert_no}"
 
-        assert path == "BII WO#444337/Cert#444337-1"
+        assert path == "Certifications/BII WO#444337/Cert#444337-1"

@@ -30,7 +30,9 @@ CREATE TABLE IF NOT EXISTS Customer (
     cstName VARCHAR(100) NOT NULL,
     cstListName VARCHAR(100) NOT NULL,
     cstIntegrationID VARCHAR(50),
-    cstIsActive BIT NOT NULL DEFAULT 1
+    cstIsActive BIT NOT NULL DEFAULT 1,
+    cstOnCreditHold BIT NOT NULL DEFAULT 0,
+    cstPaymentTerms_pytID INTEGER
 );
 
 -- Note table

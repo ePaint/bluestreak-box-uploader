@@ -142,7 +142,7 @@ class UploadWorker(QThread):
                         parent_folder = f"PO#{cert.crt_po_number} (BII WO#{cert.crt_or_id})"
                     else:
                         parent_folder = f"BII WO#{cert.crt_or_id}"
-                    folder_path = f"{parent_folder}/Cert#{cert.crt_cert_no}"
+                    folder_path = f"Certifications/{parent_folder}/Cert#{cert.crt_cert_no}"
 
                     # Ensure folder exists
                     target_folder_id = uploader.folder_manager.ensure_folder_path(
