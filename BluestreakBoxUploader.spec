@@ -16,6 +16,7 @@ datas = [
 
 # Hidden imports that PyInstaller might miss
 hiddenimports = [
+    '_version',
     'box_sdk_gen',
     'box_sdk_gen.managers',
     'box_sdk_gen.schemas',
@@ -94,8 +95,8 @@ if sys.platform == 'darwin':
         info_plist={
             'CFBundleName': 'Bluestreak Box Uploader',
             'CFBundleDisplayName': 'Bluestreak Box Uploader',
-            'CFBundleShortVersionString': '1.0.0',
-            'CFBundleVersion': '1.0.0',
+            'CFBundleShortVersionString': '1.0.1',
+            'CFBundleVersion': '1.0.1',
             'NSHighResolutionCapable': True,
             'LSMinimumSystemVersion': '10.15',
         },

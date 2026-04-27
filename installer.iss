@@ -2,7 +2,7 @@
 ; Run this on Windows after building with PyInstaller
 
 #define MyAppName "Bluestreak Box Uploader"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.0.1"
 #define MyAppPublisher "Burton Industries"
 #define MyAppExeName "Bluestreak Box Uploader.exe"
 

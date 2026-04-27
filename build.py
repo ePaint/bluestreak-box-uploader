@@ -86,6 +86,18 @@ def update_spec_version(spec_path: Path, new_version: str) -> None:
     print(f"Updated spec file to version {new_version}")
 
 
+def update_version_module(version_path: Path, new_version: str) -> None:
+    """Update version in _version.py (read at runtime by About dialog)."""
+    content = version_path.read_text()
+    updated = re.sub(
+        r'(__version__\s*=\s*)"[^"]+"',
+        f'\\1"{new_version}"',
+        content,
+    )
+    version_path.write_text(updated)
+    print(f"Updated _version.py to version {new_version}")
+
+
 def run_pyinstaller(spec_path: Path) -> bool:
     """Run PyInstaller with the spec file."""
     print("\nRunning PyInstaller...")
@@ -199,6 +211,7 @@ def main() -> int:
     pyproject_path = project_root / "pyproject.toml"
     iss_path = project_root / "installer.iss"
     spec_path = project_root / "BluestreakBoxUploader.spec"
+    version_module_path = project_root / "_version.py"
 
     # Parse arguments
     bump_part = "patch"
@@ -248,6 +261,8 @@ def main() -> int:
             update_iss_version(iss_path, new_version)
         if spec_path.exists():
             update_spec_version(spec_path, new_version)
+        if version_module_path.exists():
+            update_version_module(version_module_path, new_version)
 
     if not release_only:
         # Run PyInstaller

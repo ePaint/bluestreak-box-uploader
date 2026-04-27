@@ -17,17 +17,27 @@ from gui.theme import COLORS, SPACING, SIZES, get_icon
 
 
 def get_app_version() -> str:
-    """Get application version from package metadata or pyproject.toml."""
+    """Get application version from build-time module, package metadata, or pyproject.toml."""
+    # Primary: build-time generated _version.py (works inside PyInstaller bundle)
+    try:
+        from _version import __version__
+        return __version__
+    except ImportError:
+        pass
+
+    # Fallback: installed package metadata (works for `pip install -e .`)
     try:
         return version("bluestreak-box-uploader")
     except PackageNotFoundError:
-        # Fallback: read from pyproject.toml
-        pyproject = Path(__file__).parent.parent.parent / "pyproject.toml"
-        if pyproject.exists():
-            match = re.search(r'version\s*=\s*"([^"]+)"', pyproject.read_text())
-            if match:
-                return match.group(1)
-        return "dev"
+        pass
+
+    # Last resort: read pyproject.toml from source tree
+    pyproject = Path(__file__).parent.parent.parent / "pyproject.toml"
+    if pyproject.exists():
+        match = re.search(r'version\s*=\s*"([^"]+)"', pyproject.read_text())
+        if match:
+            return match.group(1)
+    return "dev"
 
 
 class AboutDialog(QDialog):
