@@ -30,6 +30,40 @@ def _retry_on_jti_error(func, *args, max_retries: int = 3, base_delay: float = 1
     raise last_error
 
 
+def _extract_conflict_id(error: Exception) -> str | None:
+    """Extract conflicting folder/item ID from a Box 409 error, if available."""
+    # 1. Try response_info.context_info
+    response_info = getattr(error, "response_info", None)
+    if response_info:
+        context_info = getattr(response_info, "context_info", None)
+        if isinstance(context_info, dict):
+            conflicts = context_info.get("conflicts", [])
+            if conflicts and isinstance(conflicts, list):
+                first = conflicts[0]
+                if isinstance(first, dict) and "id" in first:
+                    return str(first["id"])
+
+    # 2. Try direct context_info attribute on error
+    context_info = getattr(error, "context_info", None)
+    if isinstance(context_info, dict):
+        conflicts = context_info.get("conflicts", [])
+        if conflicts and isinstance(conflicts, list):
+            first = conflicts[0]
+            if isinstance(first, dict) and "id" in first:
+                return str(first["id"])
+
+    # 3. Fallback: regex search in str(error)
+    import re
+    match = re.search(
+        r"['\"]?conflicts['\"]?\s*:\s*\[\s*\{[^}]*?['\"]?id['\"]?\s*:\s*['\"]?(\d+)['\"]?",
+        str(error),
+    )
+    if match:
+        return match.group(1)
+
+    return None
+
+
 class FolderManager:
     """Manages Box folder operations with caching."""
 
@@ -59,14 +93,44 @@ class FolderManager:
         return folder_id
 
     def _find_folder(self, parent_id: str, name: str) -> str | None:
-        """Find a folder by name in parent, returns folder ID or None."""
+        """Find a folder by name in parent, returns folder ID or None. Paginates across all items."""
         try:
-            items = _retry_on_jti_error(
-                self._client.folders.get_folder_items, parent_id
-            )
-            for item in items.entries:
-                if item.type == "folder" and item.name == name:
-                    return item.id
+            offset = 0
+            limit = 1000
+            while True:
+                items = _retry_on_jti_error(
+                    self._client.folders.get_folder_items,
+                    parent_id,
+                    offset=offset,
+                    limit=limit,
+                )
+                entries = getattr(items, "entries", None) or []
+                if not entries:
+                    break
+
+                if parent_id not in self._cache:
+                    self._cache[parent_id] = {}
+
+                found_id = None
+                for item in entries:
+                    item_type = getattr(item, "type", None)
+                    item_name = getattr(item, "name", None)
+                    item_id = getattr(item, "id", None)
+                    if item_type == "folder" and item_name:
+                        self._cache[parent_id][item_name] = item_id
+                        if item_name == name:
+                            found_id = item_id
+
+                if found_id is not None:
+                    return found_id
+
+                if len(entries) < limit:
+                    break
+                offset += len(entries)
+                total_count = getattr(items, "total_count", None)
+                if total_count is not None and offset >= total_count:
+                    break
+
             return None
         except Exception as e:
             raise BoxFolderError(f"Failed to list folder {parent_id}: {e}")
@@ -83,8 +147,11 @@ class FolderManager:
             )
             return folder.id
         except Exception as e:
-            # Check if folder already exists (race condition)
+            # Check if folder already exists (race condition or missed in cache/search)
             if "item_name_in_use" in str(e).lower():
+                conflict_id = _extract_conflict_id(e)
+                if conflict_id:
+                    return conflict_id
                 folder_id = self._find_folder(parent_id, name)
                 if folder_id:
                     return folder_id

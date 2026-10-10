@@ -53,11 +53,28 @@ class BoxUploader:
         return self._folder_manager
 
     def file_exists(self, folder_id: str, filename: str) -> str | None:
-        """Check if file exists in folder. Returns file_id if exists, None otherwise."""
-        items = _retry_on_jti_error(self.client.folders.get_folder_items, folder_id)
-        for item in items.entries:
-            if item.name == filename and item.type == "file":
-                return item.id
+        """Check if file exists in folder. Returns file_id if exists, None otherwise. Paginates across all items."""
+        offset = 0
+        limit = 1000
+        while True:
+            items = _retry_on_jti_error(
+                self.client.folders.get_folder_items,
+                folder_id,
+                offset=offset,
+                limit=limit,
+            )
+            entries = getattr(items, "entries", None) or []
+            if not entries:
+                break
+            for item in entries:
+                if getattr(item, "name", None) == filename and getattr(item, "type", None) == "file":
+                    return item.id
+            if len(entries) < limit:
+                break
+            offset += len(entries)
+            total_count = getattr(items, "total_count", None)
+            if total_count is not None and offset >= total_count:
+                break
         return None
 
     def delete_file(self, file_id: str) -> None:
@@ -134,14 +151,8 @@ class BoxUploader:
         """Upload a new version of an existing file."""
         from box_sdk_gen.managers.uploads import UploadFileVersionAttributes
 
-        # Find the existing file (with retry)
-        items = _retry_on_jti_error(self.client.folders.get_folder_items, folder_id)
-        existing_file_id = None
-        for item in items.entries:
-            if item.type == "file" and item.name == filename:
-                existing_file_id = item.id
-                break
-
+        # Find the existing file (with retry and pagination)
+        existing_file_id = self.file_exists(folder_id, filename)
         if not existing_file_id:
             raise BoxUploadError(f"Could not find existing file: {filename}")
 
